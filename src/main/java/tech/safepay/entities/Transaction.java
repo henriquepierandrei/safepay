@@ -1,6 +1,8 @@
 package tech.safepay.entities;
 
 import jakarta.persistence.*;
+import tech.safepay.Enums.DeviceType;
+import tech.safepay.Enums.MerchantCategory;
 
 import javax.smartcardio.Card;
 import java.math.BigDecimal;

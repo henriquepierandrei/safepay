@@ -1,6 +1,10 @@
 package tech.safepay.entities;
 
 import jakarta.persistence.*;
+import tech.safepay.Enums.AlertStatus;
+import tech.safepay.Enums.AlertType;
+import tech.safepay.Enums.Severity;
+
 import java.time.LocalDateTime;
 import java.util.UUID;
 

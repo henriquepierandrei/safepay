@@ -1,6 +1,7 @@
 package tech.safepay.entities;
 
 import jakarta.persistence.*;
+import tech.safepay.Enums.RuleType;
 
 import java.time.LocalDateTime;
 import java.util.UUID;

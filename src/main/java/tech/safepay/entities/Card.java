@@ -1,6 +1,8 @@
 package tech.safepay.entities;
 
 import jakarta.persistence.*;
+import tech.safepay.Enums.CardBrand;
+import tech.safepay.Enums.CardStatus;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
