@@ -3,8 +3,6 @@ package tech.safepay.entities;
 import jakarta.persistence.*;
 import tech.safepay.Enums.DeviceType;
 import tech.safepay.Enums.MerchantCategory;
-
-import javax.smartcardio.Card;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -28,9 +26,12 @@ public class Transaction {
 
     private LocalDateTime transactionDateAndTime;
 
+    @Column(length = 100)
     private String locationCity;
-    private String locationCountry;
+
+    @Column(length = 100)
     private String locationState;
+
 
     @Enumerated(EnumType.STRING)
     private DeviceType deviceType;
@@ -94,13 +95,6 @@ public class Transaction {
         this.locationCity = locationCity;
     }
 
-    public String getLocationCountry() {
-        return locationCountry;
-    }
-
-    public void setLocationCountry(String locationCountry) {
-        this.locationCountry = locationCountry;
-    }
 
     public String getLocationState() {
         return locationState;
