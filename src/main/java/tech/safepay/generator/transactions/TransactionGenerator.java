@@ -15,15 +15,15 @@ public class TransactionGenerator {
     private static final Random RANDOM = new Random();
 
     private final MerchantCategoryGenerator merchantCategoryGenerator;
+    private final AmountGenerator amountGenerator;
     private final CardRepository cardRepository;
 
 
-    public TransactionGenerator(MerchantCategoryGenerator merchantCategoryGenerator, CardRepository cardRepository) {
+    public TransactionGenerator(MerchantCategoryGenerator merchantCategoryGenerator, AmountGenerator amountGenerator, CardRepository cardRepository) {
         this.merchantCategoryGenerator = merchantCategoryGenerator;
+        this.amountGenerator = amountGenerator;
         this.cardRepository = cardRepository;
     }
-
-
 
 
     // Escolher cartão a ser utilizado.
@@ -38,9 +38,14 @@ public class TransactionGenerator {
         Transaction transaction = new Transaction();
         var card = sortCard();
 
+
         transaction.setCard(card);
         transaction.setMerchantCategory(merchantCategoryGenerator.sortMerchant(card));
 
+        // No momento de gerar o valor da transação, também verificará se:
+        // 1 - Cartão já foi expirado;
+        // 2- Limite de crédito foi alcançado;
+        // 3 - Status do cartão (bloqueado, ativo ou perdido).
 
     }
 
