@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import tech.safepay.Enums.CardStatus;
 import tech.safepay.dtos.cards.CardResponse;
 import tech.safepay.entities.Card;
+import tech.safepay.exceptions.card.CardQuantityMaxException;
 import tech.safepay.exceptions.card.CardNotFoundException;
 import tech.safepay.generator.DefaultCardGenerator;
 import tech.safepay.repositories.CardRepository;
@@ -33,6 +34,10 @@ public class CardService {
             Integer quantity        // quantity <= QUANTITY_LIMIT
     ){
 
+        if (quantity > 50){
+            throw new CardQuantityMaxException("Número máximo de criações por request!");
+        }
+
         for (int i = 0; i < quantity; i++) {
             Card card = new Card();
 
@@ -40,13 +45,12 @@ public class CardService {
 
             card.setCardBrand(cardBrand);
             card.setCardNumber(defaultCardGenerator.generateNumber(cardBrand));
-            card.setCardHolderName("Customer SafePay");
             card.setCreatedAt(LocalDateTime.now());
             card.setExpirationDate(defaultCardGenerator.generateExpirationDate());
             card.setRiskScore(defaultCardGenerator.generateRiskScore());
             card.setCreditLimit(defaultCardGenerator.generateCreditLimit());
             card.setStatus(CardStatus.ACTIVE);
-
+            card.setCardHolderName(defaultCardGenerator.generateName());
             cardRepository.saveAndFlush(card);
 
         }
@@ -67,5 +71,8 @@ public class CardService {
                 "Cartão deletado com sucesso!"
         );
     }
+
+
+
 }
 

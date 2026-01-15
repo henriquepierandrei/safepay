@@ -1,5 +1,6 @@
 package tech.safepay.generator;
 
+import com.github.javafaker.Faker;
 import org.springframework.stereotype.Component;
 import tech.safepay.Enums.CardBrand;
 import java.math.BigDecimal;
@@ -93,4 +94,9 @@ public class DefaultCardGenerator {
         return (10 - (sum % 10)) % 10;
     }
 
+    // Gerar nome
+    public String generateName(){
+        Faker faker = new Faker();
+        return faker.name().fullName();
+    }
 }
