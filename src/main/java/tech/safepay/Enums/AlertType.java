@@ -6,134 +6,123 @@ public enum AlertType {
     // VALOR & LIMITE
     // =========================
 
-    HIGH_AMOUNT,
-    // Transação com valor significativamente acima do padrão histórico do cartão
+    HIGH_AMOUNT(20),
+    // Valor significativamente acima da média histórica do cartão.
+    // Forte quando combinado com device/local novo.
 
-    LIMIT_EXCEEDED,
-    // Tentativa de transação acima do limite de crédito disponível
-
-    SUDDEN_AMOUNT_SPIKE,
-    // Aumento abrupto no valor médio das transações em curto período
-
-    ROUND_AMOUNT_ANOMALY,
-    // Valor “redondo” atípico (ex: 1000, 5000), comum em testes de fraude
+    LIMIT_EXCEEDED(40),
+    // Tentativa de transação acima do limite disponível.
+    // Não é fraude por si só, mas é risco operacional alto.
 
 
     // =========================
     // FREQUÊNCIA & VELOCIDADE
     // =========================
 
-    VELOCITY_ABUSE,
-    // Muitas transações em um curto intervalo de tempo
+    VELOCITY_ABUSE(35),
+    // Muitas transações em curto intervalo.
+    // Um dos sinais mais fortes de fraude real.
 
-    RAPID_FIRE_TRANSACTIONS,
-    // Sequência extremamente rápida de transações consecutivas
-
-    BURST_ACTIVITY,
-    // Pico súbito de atividade fora do comportamento normal
-
-    TRANSACTION_FREQUENCY_ANOMALY,
-    // Frequência de transações acima do padrão esperado
+    BURST_ACTIVITY(25),
+    // Pico súbito de atividade fora do padrão histórico.
+    // Complementa VELOCITY olhando o “formato” do comportamento.
 
 
     // =========================
     // LOCALIZAÇÃO & GEO
     // =========================
 
-    LOCATION_ANOMALY,
-    // Transação em localização geográfica incomum para o cartão
+    LOCATION_ANOMALY(20),
+    // Local fora do padrão histórico do cartão.
+    // Sinal moderado, depende de contexto.
 
-    IMPOSSIBLE_TRAVEL,
-    // Transações em locais distantes em intervalo incompatível com deslocamento físico
+    IMPOSSIBLE_TRAVEL(45),
+    // Distância incompatível com o tempo entre transações.
+    // Quase determinístico de fraude.
 
-    COUNTRY_MISMATCH,
-    // País diferente do histórico ou do país de emissão do cartão
-
-    HIGH_RISK_COUNTRY,
-    // Transação originada de país classificado como alto risco
-
+    HIGH_RISK_COUNTRY(40),
+    // Origem em país classificado como alto risco.
+    // Forte, mas não decisivo sozinho.
 
     // =========================
     // DISPOSITIVO & REDE
     // =========================
 
-    NEW_DEVICE_DETECTED,
-    // Transação realizada a partir de um dispositivo nunca visto antes
+    NEW_DEVICE_DETECTED(15),
+    // Device nunca utilizado anteriormente.
+    // Sozinho é fraco, mas ótimo em combinação.
 
-    DEVICE_FINGERPRINT_CHANGE,
-    // Alteração significativa no fingerprint do dispositivo
+    DEVICE_FINGERPRINT_CHANGE(25),
+    // Alteração relevante no fingerprint do dispositivo.
+    // Indica troca real de ambiente ou tentativa de evasão.
 
-    IP_ANOMALY,
-    // Endereço IP incomum ou fora do padrão do usuário
+    TOR_OR_PROXY_DETECTED(35),
+    // Uso de VPN, proxy ou TOR.
+    // Forte indicativo quando somado a outros sinais.
 
-    TOR_OR_PROXY_DETECTED,
-    // Uso de VPN, proxy ou rede TOR para ocultar origem
-
-    MULTIPLE_CARDS_SAME_DEVICE,
-    // Vários cartões usados no mesmo dispositivo (indicador de fraude em massa)
+    MULTIPLE_CARDS_SAME_DEVICE(50),
+    // Vários cartões usados no mesmo dispositivo.
+    // Indicador clássico de fraude em escala.
 
 
     // =========================
     // COMPORTAMENTO DO USUÁRIO
     // =========================
 
-    UNUSUAL_MERCHANT,
-    // Estabelecimento fora do perfil de consumo do cartão
+    TIME_OF_DAY_ANOMALY(10),
+    // Horário atípico para o usuário.
+    // Sinal fraco, mas barato e útil como complemento.
 
-    UNUSUAL_MERCHANT_CATEGORY,
-    // Categoria de comerciante incomum para o histórico do usuário
 
-    TIME_OF_DAY_ANOMALY,
-    // Transação realizada em horário atípico (ex: madrugada)
-
-    WEEKEND_ANOMALY,
-    // Atividade em finais de semana fora do padrão histórico
 
 
     // =========================
     // PADRÕES DE FRAUDE CLÁSSICOS
     // =========================
 
-    CARD_TESTING,
-    // Pequenas transações repetidas para testar validade do cartão
+    CARD_TESTING(50),
+    // Pequenas transações repetidas para validar cartão.
+    // Altíssimo valor preditivo.
 
-    MICRO_TRANSACTION_PATTERN,
-    // Várias transações de valor muito baixo em sequência
+    MICRO_TRANSACTION_PATTERN(35),
+    // Sequência de valores muito baixos.
+    // Variante de card testing, mas menos agressiva.
 
-    REVERSAL_ABUSE,
-    // Muitos estornos ou cancelamentos em curto período
+    DECLINE_THEN_APPROVE_PATTERN(30),
+    // Múltiplas recusas seguidas de aprovação.
+    // Muito comum após brute force de dados.
 
-    DECLINE_THEN_APPROVE_PATTERN,
-    // Várias tentativas recusadas seguidas de aprovação
 
 
     // =========================
     // RISCO OPERACIONAL
     // =========================
 
-    MULTIPLE_FAILED_ATTEMPTS,
-    // Diversas tentativas falhas consecutivas
+    MULTIPLE_FAILED_ATTEMPTS(25),
+    // Diversas tentativas falhas consecutivas.
+    // Forte quando combinado com velocity.
 
-    SUSPICIOUS_SUCCESS_AFTER_FAILURE,
-    // Transação aprovada após múltiplas falhas suspeitas
-
-    MANUAL_REVIEW_REQUIRED,
-    // Caso marcado explicitamente para revisão humana
-
-    RULE_ENGINE_CONFLICT,
-    // Conflito entre regras de fraude (ex: score alto vs regra permissiva)
+    SUSPICIOUS_SUCCESS_AFTER_FAILURE(35),
+    // Aprovação após sequência de falhas.
+    // Clássico padrão de ataque bem-sucedido.
 
 
     // =========================
-    // SCORE & MODELO
+    // MODELO & SCORE
     // =========================
 
-    HIGH_FRAUD_SCORE,
-    // Score de fraude acima do limite definido
+    ANOMALY_MODEL_TRIGGERED(30);
+    // Modelo estatístico detectou padrão fora da normalidade.
+    // Deve pesar, mas nunca decidir sozinho.
 
-    MODEL_CONFIDENCE_LOW,
-    // Modelo de detecção com baixa confiança na decisão
 
-    ANOMALY_MODEL_TRIGGERED
-    // Modelo de detecção de anomalias identificou padrão fora da normalidade
+    private final int score;
+
+    AlertType(int score) {
+        this.score = score;
+    }
+
+    public int getScore() {
+        return score;
+    }
 }

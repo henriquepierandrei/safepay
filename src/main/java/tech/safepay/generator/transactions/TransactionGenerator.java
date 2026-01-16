@@ -67,20 +67,13 @@ public class TransactionGenerator {
         transaction.setIpAdress(ipGenerator.generateIPv6());
         transaction.setDeviceType(sortDeviceTypeGenerator.sortDeviceType(card));
 
-        // Localização geográfica da transação
-        String[] location = locationGenerator.generateLocation();
-
-        transaction.setLatitude(location[0]);
-        transaction.setLongitude(location[1]);
-
-
         // Gera a Latitude e Longitude basiado nas transações anteriores.
         String[] location = generateLocation.generateLocation(card);
         transaction.setLatitude(location[0]);
         transaction.setLongitude(location[1]);
 
 
-
+        return null;
 
     }
 
