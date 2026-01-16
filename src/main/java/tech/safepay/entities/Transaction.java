@@ -27,10 +27,10 @@ public class Transaction {
     private LocalDateTime transactionDateAndTime;
 
     @Column(length = 100)
-    private String locationCity;
+        private String latitude;
 
     @Column(length = 100)
-    private String locationState;
+    private String longitude;
 
 
     @Enumerated(EnumType.STRING)
@@ -87,21 +87,20 @@ public class Transaction {
         this.transactionDateAndTime = transactionDateAndTime;
     }
 
-    public String getLocationCity() {
-        return locationCity;
+    public String getLatitude() {
+        return latitude;
     }
 
-    public void setLocationCity(String locationCity) {
-        this.locationCity = locationCity;
+    public void setLatitude(String latitude) {
+        this.latitude = latitude;
     }
 
-
-    public String getLocationState() {
-        return locationState;
+    public String getLongitude() {
+        return longitude;
     }
 
-    public void setLocationState(String locationState) {
-        this.locationState = locationState;
+    public void setLongitude(String longitude) {
+        this.longitude = longitude;
     }
 
     public DeviceType getDeviceType() {

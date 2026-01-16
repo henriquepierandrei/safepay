@@ -47,6 +47,7 @@ public class AmountGenerator {
         );
     }
 
+    // Gera um valor normal
     private BigDecimal generateNormalAmount(BigDecimal average) {
         double variation = 0.9 + (RANDOM.nextDouble() * 0.2); // 0.9–1.1
         return average.multiply(BigDecimal.valueOf(variation))
