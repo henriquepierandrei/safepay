@@ -33,8 +33,9 @@ public class Transaction {
     private String longitude;
 
 
-    @Enumerated(EnumType.STRING)
-    private DeviceType deviceType;
+    @ManyToOne(optional = false)
+    private Device device;
+
 
     private String ipAdress;
 
@@ -103,14 +104,6 @@ public class Transaction {
         this.longitude = longitude;
     }
 
-    public DeviceType getDeviceType() {
-        return deviceType;
-    }
-
-    public void setDeviceType(DeviceType deviceType) {
-        this.deviceType = deviceType;
-    }
-
     public String getIpAdress() {
         return ipAdress;
     }
@@ -141,5 +134,13 @@ public class Transaction {
 
     public void setFraudScore(Integer fraudScore) {
         this.fraudScore = fraudScore;
+    }
+
+    public Device getDevice() {
+        return device;
+    }
+
+    public void setDevice(Device device) {
+        this.device = device;
     }
 }

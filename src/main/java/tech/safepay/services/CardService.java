@@ -18,7 +18,7 @@ import java.util.UUID;
 @Service
 @Transactional
 public class CardService {
-    private static final Integer QUANTITY_LIMIT = 50;
+    private static final Integer QUANTITY_LIMIT = 500;
     private static final Random RANDOM = new Random();
 
     private final DefaultCardGenerator defaultCardGenerator;
@@ -34,8 +34,8 @@ public class CardService {
             Integer quantity        // quantity <= QUANTITY_LIMIT
     ){
 
-        if (quantity > 50){
-            throw new CardQuantityMaxException("Número máximo de criações por request!");
+        if (cardRepository.findAll().size() >= 500){
+            throw new CardQuantityMaxException("Número máximo de criações alcançados!");
         }
 
         for (int i = 0; i < quantity; i++) {

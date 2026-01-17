@@ -7,6 +7,8 @@ import tech.safepay.Enums.CardStatus;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -22,6 +24,16 @@ public class Card {
 
     @Enumerated(EnumType.STRING)
     private CardBrand cardBrand;
+
+    // Lista de devices
+    @ManyToMany
+    @JoinTable(
+            name = "card_devices",
+            joinColumns = @JoinColumn(name = "card_id"),
+            inverseJoinColumns = @JoinColumn(name = "device_id")
+    )
+    private List<Device> devices = new ArrayList<>();
+
 
     private LocalDate expirationDate;
     private BigDecimal creditLimit;
@@ -108,5 +120,13 @@ public class Card {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public List<Device> getDevices() {
+        return devices;
+    }
+
+    public void setDevices(List<Device> devices) {
+        this.devices = devices;
     }
 }
