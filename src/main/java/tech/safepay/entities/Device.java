@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Entity
-@Table(name = "devices")
+@Table(name = "devices_tb")
 public class Device {
 
     @Id

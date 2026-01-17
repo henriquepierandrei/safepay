@@ -6,6 +6,8 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import tech.safepay.exceptions.card.CardNotFoundException;
 import tech.safepay.exceptions.card.CardQuantityMaxException;
+import tech.safepay.exceptions.device.DeviceMaxSupportedException;
+import tech.safepay.exceptions.device.DeviceNotFoundException;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -54,6 +56,26 @@ public class GlobalExceptionHandler {
         body.put("message", ex.getMessage());
         body.put("status", HttpStatus.BAD_REQUEST.value());
         return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
+    }
+
+
+
+    @ExceptionHandler(DeviceMaxSupportedException.class)
+    public ResponseEntity<Map<String, Object>> handleDeviceMaxSupportedException(DeviceMaxSupportedException ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("timestamp", LocalDateTime.now());
+        body.put("message", ex.getMessage());
+        body.put("status", HttpStatus.BAD_REQUEST.value());
+        return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(DeviceNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleDeviceNotFoundException(DeviceNotFoundException ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("timestamp", LocalDateTime.now());
+        body.put("message", ex.getMessage());
+        body.put("status", HttpStatus.NOT_FOUND.value());
+        return new ResponseEntity<>(body, HttpStatus.NOT_FOUND);
     }
 
 }

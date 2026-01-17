@@ -43,6 +43,8 @@ public class Transaction {
     private Boolean isFraud;
     private Integer fraudScore;
 
+    private LocalDateTime createdAt;
+
     // getters, setters, constructors
 
     public Transaction() {
@@ -142,5 +144,13 @@ public class Transaction {
 
     public void setDevice(Device device) {
         this.device = device;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
     }
 }

@@ -6,6 +6,9 @@ import org.springframework.stereotype.Service;
 import tech.safepay.entities.Card;
 import tech.safepay.entities.Device;
 import tech.safepay.Enums.DeviceType;
+import tech.safepay.exceptions.card.CardNotFoundException;
+import tech.safepay.exceptions.device.DeviceMaxSupportedException;
+import tech.safepay.exceptions.device.DeviceNotFoundException;
 import tech.safepay.repositories.CardRepository;
 import tech.safepay.repositories.DeviceRepository;
 
@@ -15,11 +18,15 @@ import java.util.*;
 @Service
 @Transactional
 public class DeviceService {
-
+    private static final int MAX_DEVICE_SUPPORTED = 20;
     private static final Random RANDOM = new Random();
 
-    public record DeviceResponse(String message, HttpStatus status){}
+    private static final String[] OS_OPTIONS_DESKTOP = {"Windows 10", "Windows 11", "Linux", "macOS"};
+    private static final String[] OS_OPTIONS_MOBILE = {"Android", "iOS"};
+    private static final String[] DESKTOP_BROWSERS = {"Chrome", "Firefox", "Edge", "Safari"};
+    private static final String[] MOBILE_BROWSERS  = {"Chrome Mobile", "Safari Mobile", "Samsung Internet"};
 
+    public record DeviceResponse(String message, HttpStatus status){}
 
     private final CardRepository cardRepository;
     private final DeviceRepository deviceRepository;
@@ -29,67 +36,101 @@ public class DeviceService {
         this.deviceRepository = deviceRepository;
     }
 
-
+    // Pega dois cartões aleatórios
     public List<Card> sortCardToDevice() {
         List<Card> cards = new ArrayList<>(cardRepository.findAll());
-
         if (cards.size() < 2) {
             throw new IllegalStateException("Not enough cards to associate with device");
         }
-
         Collections.shuffle(cards);
-
         return cards.subList(0, 2);
     }
 
-    public DeviceResponse generateDevice() {
-        Device device = new Device();
+    public DeviceResponse generateDevice(int quantity) {
+        long atualQuantity = deviceRepository.count();
 
-        // UUID único
-        device.setDeviceId(UUID.randomUUID().toString());
-
-        device.setCards(sortCardToDevice());
-
-        // Tipo de dispositivo aleatório
-        DeviceType[] types = DeviceType.values();
-        var devi = types[RANDOM.nextInt(types.length)];
-        device.setDeviceType(devi);
-
-        String[] osOptionsDesktop = {"Windows 10", "Windows 11", "Linux", "macOS"};
-        String[] osOptionsMobile = {"Android", "iOS"};
-
-        if (devi.equals(DeviceType.DESKTOP)){
-            device.setOs(osOptionsDesktop[RANDOM.nextInt(osOptionsDesktop.length)]);
-        } else if (devi.equals(DeviceType.MOBILE)) {
-            device.setOs(osOptionsMobile[RANDOM.nextInt(osOptionsMobile.length)]);
-        } else {
-            // TERMINAL ou outros
-            device.setOs("Embedded Linux");
+        if (atualQuantity + quantity > MAX_DEVICE_SUPPORTED) {
+            throw new DeviceMaxSupportedException(
+                    "Você pode registrar somente " + (MAX_DEVICE_SUPPORTED - atualQuantity) + " dispositivos!"
+            );
         }
 
+        List<Device> devicesToSave = new ArrayList<>();
 
+        for (int i = 0; i < quantity; i++) {
+            Device device = new Device();
 
-        // Browser aleatório
-        String[] desktopBrowsers = {"Chrome", "Firefox", "Edge", "Safari"};
-        String[] mobileBrowsers  = {"Chrome Mobile", "Safari Mobile", "Samsung Internet"};
+            // UUID único
+            device.setDeviceId(UUID.randomUUID().toString());
 
-        if (devi.equals(DeviceType.DESKTOP)) {
-            device.setBrowser(desktopBrowsers[RANDOM.nextInt(desktopBrowsers.length)]);
-        } else if (devi.equals(DeviceType.MOBILE)) {
-            device.setBrowser(mobileBrowsers[RANDOM.nextInt(mobileBrowsers.length)]);
-        } else {
-            device.setBrowser("N/A");
+            // Cartões
+            device.setCards(sortCardToDevice());
+
+            // Tipo de dispositivo aleatório
+            DeviceType[] types = DeviceType.values();
+            DeviceType type = types[RANDOM.nextInt(types.length)];
+            device.setDeviceType(type);
+
+            // OS e Browser
+            device.setOs(randomOs(type));
+            device.setBrowser(randomBrowser(type));
+
+            // Timestamps
+            Instant now = Instant.now();
+            device.setFirstSeenAt(now);
+            device.setLastSeenAt(now);
+
+            devicesToSave.add(device);
         }
 
+        // Salva tudo de uma vez
+        deviceRepository.saveAll(devicesToSave);
+        deviceRepository.flush();
 
-        // Timestamps
-        Instant now = Instant.now();
-        device.setFirstSeenAt(now);
-        device.setLastSeenAt(now);
-
-        // Aqui você poderia salvar no banco se tiver DeviceRepository
-        // deviceRepository.save(device);
-
-        return new DeviceResponse("Device generated: " + device.getDeviceId(), HttpStatus.OK);
+        return new DeviceResponse("Registro bem sucedido", HttpStatus.OK);
     }
+
+    // Auxiliares para random OS e Browser
+    private String randomOs(DeviceType type) {
+        return switch (type) {
+            case DESKTOP -> OS_OPTIONS_DESKTOP[RANDOM.nextInt(OS_OPTIONS_DESKTOP.length)];
+            case MOBILE -> OS_OPTIONS_MOBILE[RANDOM.nextInt(OS_OPTIONS_MOBILE.length)];
+            default -> "Embedded Linux";
+        };
+    }
+
+    private String randomBrowser(DeviceType type) {
+        return switch (type) {
+            case DESKTOP -> DESKTOP_BROWSERS[RANDOM.nextInt(DESKTOP_BROWSERS.length)];
+            case MOBILE -> MOBILE_BROWSERS[RANDOM.nextInt(MOBILE_BROWSERS.length)];
+            default -> "N/A";
+        };
+    }
+
+
+
+    public record  AddCardDto(UUID cardId, UUID deviceId){};
+
+    public DeviceResponse addCardToDevice(AddCardDto dto){
+        var card = cardRepository.findById(dto.cardId())
+                .orElseThrow(() -> new CardNotFoundException("Cartão de crédito não encontrado!"));
+        var device = deviceRepository.findById(dto.deviceId())
+                .orElseThrow(() -> new DeviceNotFoundException("Dispositivo não encontrado!"));
+
+        // Evita duplicatas
+        if (!device.getCards().contains(card)) {
+            device.getCards().add(card);
+        }
+
+        if (!card.getDevices().contains(device)) {
+            card.getDevices().add(device);
+        }
+
+        // Salva apenas um dos lados, JPA vai cuidar do relacionamento
+        deviceRepository.save(device);
+
+        return new DeviceResponse("Cartão adicionado no dispositivo", HttpStatus.OK);
+    }
+
+
 }

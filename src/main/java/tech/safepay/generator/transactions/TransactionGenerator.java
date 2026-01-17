@@ -21,7 +21,6 @@ public class TransactionGenerator {
     private final MerchantCategoryGenerator merchantCategoryGenerator;
     private final AmountGenerator amountGenerator;
     private final IPGenerator ipGenerator;
-    private final SortDeviceTypeGenerator sortDeviceTypeGenerator;
     private final LatitudeAndLongitudeGenerator generateLocation;
 
 
@@ -30,12 +29,11 @@ public class TransactionGenerator {
     private final DeviceRepository deviceRepository;
 
 
-    public TransactionGenerator(MerchantCategoryGenerator merchantCategoryGenerator, AmountGenerator amountGenerator, IPGenerator ipGenerator, SortDeviceTypeGenerator sortDeviceTypeGenerator, LatitudeAndLongitudeGenerator generateLocation, CardRepository cardRepository,
+    public TransactionGenerator(MerchantCategoryGenerator merchantCategoryGenerator, AmountGenerator amountGenerator, IPGenerator ipGenerator, LatitudeAndLongitudeGenerator generateLocation, CardRepository cardRepository,
                                 TransactionRepository transactionRepository, DeviceRepository deviceRepository) {
         this.merchantCategoryGenerator = merchantCategoryGenerator;
         this.amountGenerator = amountGenerator;
         this.ipGenerator = ipGenerator;
-        this.sortDeviceTypeGenerator = sortDeviceTypeGenerator;
         this.generateLocation = generateLocation;
         this.cardRepository = cardRepository;
         this.transactionRepository = transactionRepository;
@@ -65,7 +63,8 @@ public class TransactionGenerator {
         // 1 - Cartão já foi expirado;
         // 2- Limite de crédito foi alcançado;
         // 3 - Status do cartão (bloqueado, ativo ou perdido).
-        transaction.setAmount(amountGenerator.generateAmount(card));
+        var amount = amountGenerator.generateAmount(card);
+        transaction.setAmount(amount);
 
         // Definindo horário
         transaction.setTransactionDateAndTime(LocalDateTime.now());
@@ -96,9 +95,20 @@ public class TransactionGenerator {
         String[] location = generateLocation.generateLocation(card);
         transaction.setLatitude(location[0]);
         transaction.setLongitude(location[1]);
+
+        transactionRepository.saveAndFlush(transaction);
+
+        // Descontando o valor do limite de credito
+        card.setCreditLimit(card.getCreditLimit().subtract(amount));
+        cardRepository.saveAndFlush(card);
+
+
         return null;
 
     }
+
+
+
 
 
 }

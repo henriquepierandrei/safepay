@@ -3,9 +3,7 @@ package tech.safepay.generator.transactions;
 import org.springframework.stereotype.Component;
 import tech.safepay.entities.Card;
 import tech.safepay.entities.Transaction;
-import tech.safepay.repositories.CardRepository;
 import tech.safepay.repositories.TransactionRepository;
-
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
@@ -22,8 +20,6 @@ public class AmountGenerator {
         this.transactionRepository = transactionRepository;
     }
 
-
-    private
 
 
 

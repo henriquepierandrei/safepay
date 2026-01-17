@@ -1,5 +1,6 @@
 package tech.safepay.generator.transactions;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
 
@@ -16,6 +17,7 @@ public class IPGenerator {
 
     private List<String> vpnRanges;
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     // record para mapear JSON
     public record VPNIpList(String description, List<String> list) {}
 
