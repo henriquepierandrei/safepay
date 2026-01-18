@@ -1,0 +1,23 @@
+package tech.safepay.dto;
+
+import tech.safepay.Enums.CardBrand;
+import tech.safepay.Enums.CardStatus;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.UUID;
+
+public record CardsInDeviceResponseDto(
+        List<CardResponseDto> cards
+) {
+    public record CardResponseDto(
+            UUID cardId,
+            String cardNumber,
+            String cardHolderName,
+            CardBrand cardBrand,
+            LocalDate expirationDate,
+            BigDecimal creditLimit,
+            CardStatus status
+
+    ){}
+}

@@ -3,6 +3,7 @@ package tech.safepay.services;
 import jakarta.transaction.Transactional;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import tech.safepay.dto.CardsInDeviceResponseDto;
 import tech.safepay.dto.DeviceListResponseDto;
 import tech.safepay.entities.Card;
 import tech.safepay.entities.Device;
@@ -47,6 +48,12 @@ public class DeviceService {
         return cards.subList(0, 2);
     }
 
+
+    /**
+     * Gerar Dispositivo
+     * @param quantity - Quantidade de Dispositivo
+     * @return - Response
+     */
     public DeviceResponse generateDevice(int quantity) {
         long atualQuantity = deviceRepository.count();
 
@@ -91,6 +98,8 @@ public class DeviceService {
         return new DeviceResponse("Registro bem sucedido", HttpStatus.OK);
     }
 
+
+
     // Auxiliares para random OS e Browser
     private String randomOs(DeviceType type) {
         return switch (type) {
@@ -99,7 +108,6 @@ public class DeviceService {
             default -> "Embedded Linux";
         };
     }
-
     private String randomBrowser(DeviceType type) {
         return switch (type) {
             case DESKTOP -> DESKTOP_BROWSERS[RANDOM.nextInt(DESKTOP_BROWSERS.length)];
@@ -109,9 +117,12 @@ public class DeviceService {
     }
 
 
-
+    /**
+     * Adiciona cartão no dispositivo
+     * @param cardId - Id do cartão
+     * @param deviceId - Id do dispositivo
+     */
     public record  AddCardDto(UUID cardId, UUID deviceId){};
-
     public DeviceResponse addCardToDevice(AddCardDto dto){
         var card = cardRepository.findById(dto.cardId())
                 .orElseThrow(() -> new CardNotFoundException("Cartão de crédito não encontrado!"));
@@ -134,6 +145,10 @@ public class DeviceService {
     }
 
 
+    /**
+     * Obtém uma lista de dispositivo
+     * @return - Lista de dispositivos
+     */
     public DeviceListResponseDto getDeviceList() {
 
         var devices = deviceRepository.findAll();
@@ -150,6 +165,43 @@ public class DeviceService {
                         .toList();
 
         return new DeviceListResponseDto(deviceDtos);
+    }
+
+
+    /**
+     * Mascara o número do cartão
+     * @param cardNumber - Número do cartão para mascarar
+     * @return
+     */
+    public String getMaskedCardNumber(String cardNumber) {
+        if (cardNumber == null || cardNumber.length() < 4) {
+            return "****";
+        }
+        return "**** **** **** " + cardNumber.substring(cardNumber.length() - 4);
+    }
+
+    /**
+     * Obtém uma lista de cartões vinculados ao dispositivo
+     * @param deviceId Id do dispositivo
+     */
+    public CardsInDeviceResponseDto getCardsInDevice(UUID deviceId) {
+
+        var device = deviceRepository.findById(deviceId)
+                .orElseThrow(() -> new DeviceNotFoundException("Dispositivo não encontrado!"));
+
+        var cardDtos = device.getCards().stream()
+                .map(card -> new CardsInDeviceResponseDto.CardResponseDto(
+                        card.getCardId(),
+                        getMaskedCardNumber(card.getCardNumber()),
+                        card.getCardHolderName(),
+                        card.getCardBrand(),
+                        card.getExpirationDate(),
+                        card.getCreditLimit(),
+                        card.getStatus()
+                ))
+                .toList();
+
+        return new CardsInDeviceResponseDto(cardDtos);
     }
 
 
