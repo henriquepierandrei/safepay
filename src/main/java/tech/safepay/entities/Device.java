@@ -18,7 +18,7 @@ public class Device {
     private UUID id;
 
     @Column(nullable = false, unique = true)
-    private String deviceId; // fingerprint / uuid
+    private String fingerPrintId; // fingerprint / uuid
 
     @Column(length = 50)
     @Enumerated(EnumType.STRING)
@@ -46,12 +46,12 @@ public class Device {
         this.id = id;
     }
 
-    public String getDeviceId() {
-        return deviceId;
+    public String getFingerPrintId() {
+        return fingerPrintId;
     }
 
-    public void setDeviceId(String deviceId) {
-        this.deviceId = deviceId;
+    public void setFingerPrintId(String fingerPrintId) {
+        this.fingerPrintId = fingerPrintId;
     }
 
     public DeviceType getDeviceType() {

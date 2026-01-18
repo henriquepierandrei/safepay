@@ -3,6 +3,7 @@ package tech.safepay.services;
 import jakarta.transaction.Transactional;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import tech.safepay.dto.DeviceListResponseDto;
 import tech.safepay.entities.Card;
 import tech.safepay.entities.Device;
 import tech.safepay.Enums.DeviceType;
@@ -60,8 +61,8 @@ public class DeviceService {
         for (int i = 0; i < quantity; i++) {
             Device device = new Device();
 
-            // UUID único
-            device.setDeviceId(UUID.randomUUID().toString());
+            // UUID único para referenciar fingerprint
+            device.setFingerPrintId(UUID.randomUUID().toString());
 
             // Cartões
             device.setCards(sortCardToDevice());
@@ -131,6 +132,26 @@ public class DeviceService {
 
         return new DeviceResponse("Cartão adicionado no dispositivo", HttpStatus.OK);
     }
+
+
+    public DeviceListResponseDto getDeviceList() {
+
+        var devices = deviceRepository.findAll();
+
+        List<DeviceListResponseDto.DeviceDto> deviceDtos =
+                devices.stream()
+                        .map(device -> new DeviceListResponseDto.DeviceDto(
+                                device.getId(),
+                                device.getFingerPrintId(),
+                                device.getDeviceType(),
+                                device.getOs(),
+                                device.getBrowser()
+                        ))
+                        .toList();
+
+        return new DeviceListResponseDto(deviceDtos);
+    }
+
 
 
 }

@@ -19,6 +19,11 @@ public class DeviceController {
         return ResponseEntity.ok(deviceService.generateDevice(quantity));
     }
 
+    @GetMapping("/list")
+    public ResponseEntity<?> getDeviceList(){
+        return ResponseEntity.ok(deviceService.getDeviceList());
+    }
+
     @PostMapping("/card/add")
     public ResponseEntity<?> add(@RequestBody DeviceService.AddCardDto dto){
         return ResponseEntity.ok(deviceService.addCardToDevice(dto));
