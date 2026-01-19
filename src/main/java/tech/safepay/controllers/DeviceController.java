@@ -66,12 +66,35 @@ public class DeviceController {
      * @return resultado da operação
      */
     @PostMapping("/cards/add")
-    public ResponseEntity<?> add(
+    public ResponseEntity<?> addCard(
             @RequestBody DeviceService.AddCardDto dto
     ) {
         // Valida e processa o vínculo no service
         return ResponseEntity.ok(deviceService.addCardToDevice(dto));
     }
+
+    /**
+     * Vincula um cartão a um dispositivo.
+     *
+     * Exemplo:
+     * POST /api/v1/device/cards/add
+     * Body:
+     * {
+     *   "deviceId": "...",
+     *   "cardId": "..."
+     * }
+     *
+     * @return resultado da operação
+     */
+    @DeleteMapping("/cards/remove")
+    public ResponseEntity<?> removeCard(
+            @RequestParam(name = "cardId") UUID cardId,
+            @RequestParam(name = "deviceId") UUID deviceId
+    ) {
+        // Valida e processa o vínculo no service
+        return ResponseEntity.ok(deviceService.removeCardInDevice(cardId, deviceId));
+    }
+
 
     /**
      * Retorna todos os cartões vinculados a um dispositivo específico.

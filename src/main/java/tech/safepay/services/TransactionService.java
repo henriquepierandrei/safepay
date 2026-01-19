@@ -37,8 +37,11 @@ public class TransactionService {
         return "**** **** **** " + cardNumber.substring(cardNumber.length() - 4);
     }
 
-    public TransactionResponseDto getTransactionById(UUID id) {
 
+
+
+
+    public TransactionResponseDto getTransactionById(UUID id) {
         var transaction = transactionRepository.findById(id)
                 .orElseThrow(() -> new TransactionNotFoundException("Transação não encontrada"));
 
@@ -74,7 +77,6 @@ public class TransactionService {
                 transaction.getIpAddress(),
                 transaction.getStatus(),
                 transaction.getFraud(),
-                transaction.getFraudScore(),
                 transaction.getCreatedAt()
         );
     }

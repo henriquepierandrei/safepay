@@ -11,6 +11,7 @@ import tech.safepay.Enums.DeviceType;
 import tech.safepay.exceptions.card.CardNotFoundException;
 import tech.safepay.exceptions.device.DeviceMaxSupportedException;
 import tech.safepay.exceptions.device.DeviceNotFoundException;
+import tech.safepay.exceptions.device.DeviceNotLinkedException;
 import tech.safepay.repositories.CardRepository;
 import tech.safepay.repositories.DeviceRepository;
 
@@ -168,6 +169,25 @@ public class DeviceService {
     }
 
 
+    public DeviceResponse removeCardInDevice(UUID cardId, UUID deviceId) {
+        var card = cardRepository.findById(cardId)
+                .orElseThrow(() -> new CardNotFoundException("Cartão de crédito não encontrado!"));
+
+        var device = deviceRepository.findById(deviceId)
+                .orElseThrow(() -> new DeviceNotFoundException("Dispositivo não encontrado!"));
+
+        if (!card.getDevices().contains(device)) {
+            throw new DeviceNotLinkedException("Dispositivo não vinculado a este cartão");
+        }
+
+        card.getDevices().remove(device);
+        cardRepository.save(card);
+
+        return new DeviceResponse(
+                "Cartão removido do dispositivo!",
+                HttpStatus.OK
+        );
+    }
 
 
 

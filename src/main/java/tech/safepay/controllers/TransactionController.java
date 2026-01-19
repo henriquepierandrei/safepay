@@ -19,8 +19,7 @@ public class TransactionController {
     }
 
     @GetMapping("/get")
-    public ResponseEntity<?> getTransactionById(@RequestParam(name = "transactionId")UUID id) {
-        // Controller não transforma dados, apenas repassa
+    public ResponseEntity<?> getTransactionById(@RequestParam(name = "transactionId") UUID id) {
         return ResponseEntity.ok(transactionService.getTransactionById(id));
     }
 }

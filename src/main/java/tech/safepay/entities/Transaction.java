@@ -41,7 +41,6 @@ public class Transaction {
 
     private Boolean status;
     private Boolean isFraud;
-    private Integer fraudScore;
 
     private LocalDateTime createdAt;
 
@@ -128,14 +127,6 @@ public class Transaction {
 
     public void setFraud(Boolean fraud) {
         isFraud = fraud;
-    }
-
-    public Integer getFraudScore() {
-        return fraudScore;
-    }
-
-    public void setFraudScore(Integer fraudScore) {
-        this.fraudScore = fraudScore;
     }
 
     public Device getDevice() {

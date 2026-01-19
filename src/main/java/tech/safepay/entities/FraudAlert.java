@@ -6,6 +6,7 @@ import tech.safepay.Enums.AlertType;
 import tech.safepay.Enums.Severity;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -24,8 +25,14 @@ public class FraudAlert {
     @JoinColumn(name = "card_id")
     private Card card;
 
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(
+            name = "fraud_alert_types_tb",
+            joinColumns = @JoinColumn(name = "alert_id")
+    )
     @Enumerated(EnumType.STRING)
-    private AlertType alertType;
+    @Column(name = "alert_type")
+    private List<AlertType> alertTypes;
 
     @Enumerated(EnumType.STRING)
     private Severity severity;
@@ -37,6 +44,8 @@ public class FraudAlert {
     private AlertStatus status;
 
     private LocalDateTime createdAt;
+
+    private Integer fraudScore;
 
     // getters, setters, constructors
 
@@ -67,12 +76,12 @@ public class FraudAlert {
         this.card = card;
     }
 
-    public AlertType getAlertType() {
-        return alertType;
+    public List<AlertType> getAlertTypes() {
+        return alertTypes;
     }
 
-    public void setAlertType(AlertType alertType) {
-        this.alertType = alertType;
+    public void setAlertTypes(List<AlertType> alertTypes) {
+        this.alertTypes = alertTypes;
     }
 
     public Severity getSeverity() {
@@ -113,5 +122,13 @@ public class FraudAlert {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public Integer getFraudScore() {
+        return fraudScore;
+    }
+
+    public void setFraudScore(Integer fraudScore) {
+        this.fraudScore = fraudScore;
     }
 }

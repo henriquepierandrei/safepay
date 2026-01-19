@@ -8,6 +8,7 @@ import tech.safepay.exceptions.card.CardNotFoundException;
 import tech.safepay.exceptions.card.CardQuantityMaxException;
 import tech.safepay.exceptions.device.DeviceMaxSupportedException;
 import tech.safepay.exceptions.device.DeviceNotFoundException;
+import tech.safepay.exceptions.device.DeviceNotLinkedException;
 import tech.safepay.exceptions.transaction.TransactionNotFoundException;
 
 import java.time.LocalDateTime;
@@ -86,6 +87,15 @@ public class GlobalExceptionHandler {
         body.put("message", ex.getMessage());
         body.put("status", HttpStatus.NOT_FOUND.value());
         return new ResponseEntity<>(body, HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(DeviceNotLinkedException.class)
+    public ResponseEntity<Map<String, Object>> handleDeviceNotLinkedException(DeviceNotLinkedException ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("timestamp", LocalDateTime.now());
+        body.put("message", ex.getMessage());
+        body.put("status", HttpStatus.BAD_REQUEST.value());
+        return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
     }
 
 }

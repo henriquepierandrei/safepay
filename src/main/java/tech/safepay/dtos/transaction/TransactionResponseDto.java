@@ -18,7 +18,6 @@ public record TransactionResponseDto(
         String ipAddress,
         Boolean status,
         Boolean isFraud,
-        Integer riskScore,
         LocalDateTime createdAt
 ) {
 
