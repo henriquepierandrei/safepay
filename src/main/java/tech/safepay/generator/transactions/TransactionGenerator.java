@@ -100,6 +100,7 @@ public class TransactionGenerator {
         cardRepository.saveAndFlush(card);
 
 
+        // FAZER VALIDACAO ANTES  DE SALVAR NO DB A TRANSACTION
         return null;
 
     }

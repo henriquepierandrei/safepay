@@ -45,7 +45,7 @@ public enum AlertType {
     // Forte, mas não decisivo sozinho.
 
     // =========================
-    // DISPOSITIVO & REDE
+    // DISPOSITIVO & REDE                   falta fazer tbm
     // =========================
 
     NEW_DEVICE_DETECTED(15),
