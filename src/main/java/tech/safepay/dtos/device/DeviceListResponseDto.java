@@ -1,4 +1,4 @@
-package tech.safepay.dto;
+package tech.safepay.dtos.device;
 
 import tech.safepay.Enums.DeviceType;
 

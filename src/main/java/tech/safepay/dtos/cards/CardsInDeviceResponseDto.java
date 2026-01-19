@@ -1,4 +1,4 @@
-package tech.safepay.dto;
+package tech.safepay.dtos.cards;
 
 import tech.safepay.Enums.CardBrand;
 import tech.safepay.Enums.CardStatus;

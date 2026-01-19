@@ -3,6 +3,7 @@ package tech.safepay.controllers;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import tech.safepay.services.CardService;
 import tech.safepay.services.DeviceService;
 
 import java.util.UUID;
@@ -11,9 +12,11 @@ import java.util.UUID;
 @RequestMapping("/api/v1/device")
 public class DeviceController {
     private final DeviceService deviceService;
+    private final CardService cardService;
 
-    public DeviceController(DeviceService deviceService) {
+    public DeviceController(DeviceService deviceService, CardService cardService) {
         this.deviceService = deviceService;
+        this.cardService = cardService;
     }
 
     /**
@@ -84,7 +87,7 @@ public class DeviceController {
             @RequestParam(name = "deviceId") UUID deviceId
     ) {
         // Busca cartões associados ao device
-        return ResponseEntity.ok(deviceService.getCardsInDevice(deviceId));
+        return ResponseEntity.ok(cardService.getCardsInDevice(deviceId));
     }
 
 }

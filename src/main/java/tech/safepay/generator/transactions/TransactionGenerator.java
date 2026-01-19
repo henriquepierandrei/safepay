@@ -71,7 +71,7 @@ public class TransactionGenerator {
 
 
         // Definindo IP
-        transaction.setIpAdress(ipGenerator.generateIP());
+        transaction.setIpAddress(ipGenerator.generateIP());
 
 
 
@@ -87,9 +87,6 @@ public class TransactionGenerator {
         transaction.setDevice(
                 devices.get(RANDOM.nextInt(devices.size()))
         );
-
-
-
 
         // Gera a Latitude e Longitude basiado nas transações anteriores.
         String[] location = generateLocation.generateLocation(card);

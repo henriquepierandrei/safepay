@@ -4,12 +4,16 @@ import jakarta.transaction.Transactional;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import tech.safepay.Enums.CardStatus;
+import tech.safepay.dtos.cards.CardDataResponseDto;
 import tech.safepay.dtos.cards.CardResponse;
+import tech.safepay.dtos.cards.CardsInDeviceResponseDto;
 import tech.safepay.entities.Card;
 import tech.safepay.exceptions.card.CardQuantityMaxException;
 import tech.safepay.exceptions.card.CardNotFoundException;
+import tech.safepay.exceptions.device.DeviceNotFoundException;
 import tech.safepay.generator.DefaultCardGenerator;
 import tech.safepay.repositories.CardRepository;
+import tech.safepay.repositories.DeviceRepository;
 
 import java.time.LocalDateTime;
 import java.util.Random;
@@ -23,10 +27,12 @@ public class CardService {
 
     private final DefaultCardGenerator defaultCardGenerator;
     private final CardRepository cardRepository;
+    private final DeviceRepository deviceRepository;
 
-    public CardService(DefaultCardGenerator defaultCardGenerator, CardRepository cardRepository) {
+    public CardService(DefaultCardGenerator defaultCardGenerator, CardRepository cardRepository, DeviceRepository deviceRepository) {
         this.defaultCardGenerator = defaultCardGenerator;
         this.cardRepository = cardRepository;
+        this.deviceRepository = deviceRepository;
     }
 
     // Registro do cartão
@@ -71,6 +77,62 @@ public class CardService {
                 "Cartão deletado com sucesso!"
         );
     }
+
+
+
+    /**
+     * Mascara o número do cartão
+     * @param cardNumber - Número do cartão para mascarar
+     * @return
+     */
+    private String getMaskedCardNumber(String cardNumber) {
+        if (cardNumber == null || cardNumber.length() < 4) {
+            return "****";
+        }
+        return "**** **** **** " + cardNumber.substring(cardNumber.length() - 4);
+    }
+
+    /**
+     * Obtém uma lista de cartões vinculados ao dispositivo
+     * @param deviceId Id do dispositivo
+     */
+    public CardsInDeviceResponseDto getCardsInDevice(UUID deviceId) {
+
+        var device = deviceRepository.findById(deviceId)
+                .orElseThrow(() -> new DeviceNotFoundException("Dispositivo não encontrado!"));
+
+        var cardDtos = device.getCards().stream()
+                .map(card -> new CardsInDeviceResponseDto.CardResponseDto(
+                        card.getCardId(),
+                        getMaskedCardNumber(card.getCardNumber()),
+                        card.getCardHolderName(),
+                        card.getCardBrand(),
+                        card.getExpirationDate(),
+                        card.getCreditLimit(),
+                        card.getStatus()
+                ))
+                .toList();
+
+        return new CardsInDeviceResponseDto(cardDtos);
+    }
+
+
+    public CardDataResponseDto getCardById(UUID cardId) {
+
+        var card = cardRepository.findById(cardId)
+                .orElseThrow(() -> new CardNotFoundException("Cartão não encontrado"));
+
+        return new CardDataResponseDto(
+                card.getCardId(),
+                getMaskedCardNumber(card.getCardNumber()),
+                card.getCardHolderName(),
+                card.getCardBrand(),
+                card.getExpirationDate(),
+                card.getCreditLimit(),
+                card.getStatus()
+        );
+    }
+
 
 
 

@@ -3,8 +3,8 @@ package tech.safepay.services;
 import jakarta.transaction.Transactional;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import tech.safepay.dto.CardsInDeviceResponseDto;
-import tech.safepay.dto.DeviceListResponseDto;
+import tech.safepay.dtos.cards.CardsInDeviceResponseDto;
+import tech.safepay.dtos.device.DeviceListResponseDto;
 import tech.safepay.entities.Card;
 import tech.safepay.entities.Device;
 import tech.safepay.Enums.DeviceType;
@@ -168,41 +168,6 @@ public class DeviceService {
     }
 
 
-    /**
-     * Mascara o número do cartão
-     * @param cardNumber - Número do cartão para mascarar
-     * @return
-     */
-    public String getMaskedCardNumber(String cardNumber) {
-        if (cardNumber == null || cardNumber.length() < 4) {
-            return "****";
-        }
-        return "**** **** **** " + cardNumber.substring(cardNumber.length() - 4);
-    }
-
-    /**
-     * Obtém uma lista de cartões vinculados ao dispositivo
-     * @param deviceId Id do dispositivo
-     */
-    public CardsInDeviceResponseDto getCardsInDevice(UUID deviceId) {
-
-        var device = deviceRepository.findById(deviceId)
-                .orElseThrow(() -> new DeviceNotFoundException("Dispositivo não encontrado!"));
-
-        var cardDtos = device.getCards().stream()
-                .map(card -> new CardsInDeviceResponseDto.CardResponseDto(
-                        card.getCardId(),
-                        getMaskedCardNumber(card.getCardNumber()),
-                        card.getCardHolderName(),
-                        card.getCardBrand(),
-                        card.getExpirationDate(),
-                        card.getCreditLimit(),
-                        card.getStatus()
-                ))
-                .toList();
-
-        return new CardsInDeviceResponseDto(cardDtos);
-    }
 
 
 

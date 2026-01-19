@@ -37,7 +37,7 @@ public class Transaction {
     private Device device;
 
 
-    private String ipAdress;
+    private String ipAddress;
 
     private Boolean status;
     private Boolean isFraud;
@@ -106,12 +106,12 @@ public class Transaction {
         this.longitude = longitude;
     }
 
-    public String getIpAdress() {
-        return ipAdress;
+    public String getIpAddress() {
+        return ipAddress;
     }
 
-    public void setIpAdress(String ipAdress) {
-        this.ipAdress = ipAdress;
+    public void setIpAddress(String ipAddress) {
+        this.ipAddress = ipAddress;
     }
 
     public Boolean getStatus() {
