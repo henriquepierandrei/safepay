@@ -24,4 +24,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
     Optional<Transaction> findFirstByCardOrderByCreatedAtDesc(Card card);
 
 
+    List<Transaction> findTop10ByCardOrderByCreatedAtDesc(Card card);
+
+    List<Transaction> findTop5ByCardOrderByCreatedAtDesc(Card card);
 }

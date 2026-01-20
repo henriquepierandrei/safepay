@@ -39,7 +39,7 @@ public class Transaction {
 
     private String ipAddress;
 
-    private Boolean status;
+    private Boolean approved;
     private Boolean isFraud;
 
     private LocalDateTime createdAt;
@@ -113,12 +113,12 @@ public class Transaction {
         this.ipAddress = ipAddress;
     }
 
-    public Boolean getStatus() {
-        return status;
+    public Boolean getApproved() {
+        return approved;
     }
 
-    public void setStatus(Boolean status) {
-        this.status = status;
+    public void setApproved(Boolean approved) {
+        this.approved = approved;
     }
 
     public Boolean getFraud() {
