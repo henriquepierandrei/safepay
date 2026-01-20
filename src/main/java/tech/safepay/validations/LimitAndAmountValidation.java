@@ -57,12 +57,29 @@ public class LimitAndAmountValidation {
      * HIGH_AMOUNT
      * =========================
      *
-     * Detecta valores significativamente acima da média histórica.
-     * Não dispara por pequenas variações — usa multiplicador.
+     * Objetivo:
+     * Detectar transações cujo valor esteja significativamente acima
+     * do comportamento histórico do cartão.
+     *
+     * Racional:
+     * Valores fora do padrão individual do cliente tendem a ocorrer
+     * em cenários de fraude oportunista ou uso indevido pontual,
+     * especialmente quando combinados com device ou localização atípicos.
+     *
+     * Estratégia:
+     * 1. Recupera histórico recente do cartão (amostra controlada)
+     * 2. Calcula a média dos valores transacionados
+     * 3. Aplica um multiplicador de tolerância para evitar falsos positivos
+     * 4. Compara o valor atual com o threshold calculado
+     *
+     * Regra:
+     * valor_atual > média_histórica × multiplicador
      *
      * Peso: 20
-     * Forte quando combinado com device ou localização anômala.
+     * Não deve bloquear isoladamente.
+     * Atua como sinal de reforço no score global.
      */
+
     public Integer highAmountValidation(Transaction transaction) {
         Card card = transaction.getCard();
         List<Transaction> transactions = getLastTransactions(card);
@@ -88,11 +105,27 @@ public class LimitAndAmountValidation {
      * LIMIT_EXCEEDED
      * =========================
      *
-     * Verifica se a transação ultrapassa o limite disponível do cartão.
-     * Não é fraude isoladamente, mas indica risco operacional alto.
+     * Objetivo:
+     * Identificar tentativas de transação acima do limite disponível
+     * real do cartão no momento da autorização.
+     *
+     * Racional:
+     * Embora não seja fraude por definição, esse comportamento indica
+     * risco operacional elevado e frequentemente aparece associado
+     * a tentativas automatizadas ou uso abusivo do cartão.
+     *
+     * Estratégia:
+     * 1. Soma os valores já comprometidos no histórico recente
+     * 2. Calcula o limite disponível efetivo
+     * 3. Compara com o valor da transação atual
+     *
+     * Regra:
+     * valor_atual > limite_disponível
      *
      * Peso: 40
+     * Pode acionar bloqueios ou revisões adicionais.
      */
+
     public Integer limitExceededValidation(Transaction transaction) {
         Card card = transaction.getCard();
         List<Transaction> transactions = getLastTransactions(card);
