@@ -1,6 +1,7 @@
 package tech.safepay.dtos.transaction;
 
 import tech.safepay.Enums.MerchantCategory;
+import tech.safepay.Enums.TransactionStatus;
 import tech.safepay.dtos.cards.CardDataResponseDto;
 import tech.safepay.dtos.device.DeviceListResponseDto;
 
@@ -16,7 +17,7 @@ public record TransactionResponseDto(
         String longitude,
         DeviceListResponseDto.DeviceDto device,
         String ipAddress,
-        Boolean status,
+        TransactionStatus transactionStatus,
         Boolean isFraud,
         LocalDateTime createdAt
 ) {

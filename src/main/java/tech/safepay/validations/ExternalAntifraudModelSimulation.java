@@ -2,6 +2,7 @@ package tech.safepay.validations;
 
 import org.springframework.stereotype.Component;
 import tech.safepay.Enums.AlertType;
+import tech.safepay.dtos.validation.ValidationResultDto;
 import tech.safepay.entities.Card;
 import tech.safepay.entities.Transaction;
 import tech.safepay.repositories.TransactionRepository;
@@ -60,12 +61,14 @@ public class ExternalAntifraudModelSimulation {
      * - Retorna score fixo quando o "modelo externo" sinaliza risco
      * - Retorna 0 quando não há anomalia estatística
      */
-    public int anomalyModelTriggered(Transaction transaction) {
+    public ValidationResultDto anomalyModelTriggered(Transaction transaction) {
+
+        ValidationResultDto result = new ValidationResultDto();
 
         Card card = transaction.getCard();
 
         if (card == null || transaction.getAmount() == null) {
-            return 0;
+            return result;
         }
 
         LocalDateTime windowStart = LocalDateTime.now().minusHours(24);
@@ -73,10 +76,7 @@ public class ExternalAntifraudModelSimulation {
         List<Transaction> history =
                 transactionRepository.findByCardAndCreatedAtAfter(card, windowStart);
 
-        // Histórico insuficiente → antifraude externo não opina
-        if (history.size() < 10) {
-            return 0;
-        }
+        if (history.size() < 10) return result;
 
         DoubleSummaryStatistics stats =
                 history.stream()
@@ -97,18 +97,18 @@ public class ExternalAntifraudModelSimulation {
 
         double standardDeviation = Math.sqrt(variance);
 
-        // Histórico extremamente estável → sem poder preditivo
-        if (standardDeviation == 0) {
-            return 0;
-        }
+        if (standardDeviation == 0) return result;
 
         double currentAmount = transaction.getAmount().doubleValue();
 
-        boolean isAnomalous =
-                Math.abs(currentAmount - average) > (3 * standardDeviation);
+        boolean isAnomalous = Math.abs(currentAmount - average) > (3 * standardDeviation);
 
-        return isAnomalous
-                ? AlertType.ANOMALY_MODEL_TRIGGERED.getScore()
-                : 0;
+        if (isAnomalous) {
+            result.addScore(AlertType.ANOMALY_MODEL_TRIGGERED.getScore());
+            result.addAlert(AlertType.ANOMALY_MODEL_TRIGGERED);
+        }
+
+        return result;
     }
+
 }

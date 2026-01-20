@@ -1,10 +1,11 @@
 package tech.safepay.controllers;
 
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+import tech.safepay.dtos.transaction.TransactionResponseDto;
+import tech.safepay.entities.Transaction;
+import tech.safepay.services.TransactionDecisionService;
+import tech.safepay.services.TransactionPipelineService;
 import tech.safepay.services.TransactionService;
 
 import java.util.UUID;
@@ -13,13 +14,26 @@ import java.util.UUID;
 @RequestMapping("api/v1/transaction")
 public class TransactionController {
     private final TransactionService transactionService;
+    private final TransactionPipelineService transactionPipelineService;
 
-    public TransactionController(TransactionService transactionService) {
+    public TransactionController(TransactionService transactionService, TransactionPipelineService transactionPipelineService) {
         this.transactionService = transactionService;
+        this.transactionPipelineService = transactionPipelineService;
     }
 
     @GetMapping("/get")
     public ResponseEntity<?> getTransactionById(@RequestParam(name = "transactionId") UUID id) {
         return ResponseEntity.ok(transactionService.getTransactionById(id));
     }
+
+    /**
+     * Simula uma nova transação passando por todo o pipeline antifraude.
+     */
+    @PostMapping("/process")
+    public ResponseEntity<TransactionPipelineService.TransactionDecisionResponse> processTransaction() {
+        // processa pipeline, já retorna DTO seguro
+        var result = transactionPipelineService.process();
+        return ResponseEntity.ok(result);
+    }
+
 }

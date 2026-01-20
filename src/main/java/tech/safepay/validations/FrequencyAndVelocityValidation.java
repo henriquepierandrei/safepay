@@ -2,6 +2,7 @@ package tech.safepay.validations;
 
 import org.springframework.stereotype.Component;
 import tech.safepay.Enums.AlertType;
+import tech.safepay.dtos.validation.ValidationResultDto;
 import tech.safepay.entities.Card;
 import tech.safepay.entities.Transaction;
 import tech.safepay.repositories.TransactionRepository;
@@ -35,8 +36,11 @@ public class FrequencyAndVelocityValidation {
      * Peso: 35
      * Sinal forte, frequentemente associado a fraude real.
      */
-    public Integer velocityAbuseValidation(Transaction transaction) {
+    public ValidationResultDto velocityAbuseValidation(Transaction transaction) {
+        ValidationResultDto result = new ValidationResultDto();
+
         Card card = transaction.getCard();
+        if (card == null) return result;
 
         // Janela de observação (últimos 5 minutos)
         LocalDateTime windowStart = LocalDateTime.now().minusMinutes(5);
@@ -44,14 +48,14 @@ public class FrequencyAndVelocityValidation {
         List<Transaction> recentTransactions =
                 transactionRepository.findByCardAndCreatedAtAfter(card, windowStart);
 
-        // Limite máximo aceitável de transações na janela
         int maxAllowed = 3;
 
         if (recentTransactions.size() >= maxAllowed) {
-            return AlertType.VELOCITY_ABUSE.getScore();
+            result.addScore(AlertType.VELOCITY_ABUSE.getScore());
+            result.addAlert(AlertType.VELOCITY_ABUSE);
         }
 
-        return 0;
+        return result;
     }
 
     /**
@@ -72,8 +76,11 @@ public class FrequencyAndVelocityValidation {
      * Peso: 25
      * Atua como reforço para VELOCITY_ABUSE.
      */
-    public Integer burstActivityValidation(Transaction transaction) {
+    public ValidationResultDto burstActivityValidation(Transaction transaction) {
+        ValidationResultDto result = new ValidationResultDto();
+
         Card card = transaction.getCard();
+        if (card == null) return result;
 
         // Baseline histórico (últimas 24 horas)
         LocalDateTime baselineStart = LocalDateTime.now().minusHours(24);
@@ -81,10 +88,7 @@ public class FrequencyAndVelocityValidation {
         List<Transaction> baselineTransactions =
                 transactionRepository.findByCardAndCreatedAtAfter(card, baselineStart);
 
-        // Histórico insuficiente → risco neutro
-        if (baselineTransactions.size() < 5) {
-            return 0;
-        }
+        if (baselineTransactions.size() < 5) return result;
 
         // Média histórica de transações por hora
         double avgPerHour = baselineTransactions.size() / 24.0;
@@ -95,11 +99,11 @@ public class FrequencyAndVelocityValidation {
         int burstCount =
                 transactionRepository.findByCardAndCreatedAtAfter(card, burstWindowStart).size();
 
-        // Pico significativamente acima do padrão histórico
         if (burstCount > avgPerHour * 3) {
-            return AlertType.BURST_ACTIVITY.getScore();
+            result.addScore(AlertType.BURST_ACTIVITY.getScore());
+            result.addAlert(AlertType.BURST_ACTIVITY);
         }
 
-        return 0;
+        return result;
     }
 }

@@ -2,6 +2,8 @@ package tech.safepay.validations;
 
 import org.springframework.stereotype.Component;
 import tech.safepay.Enums.AlertType;
+import tech.safepay.Enums.TransactionStatus;
+import tech.safepay.dtos.validation.ValidationResultDto;
 import tech.safepay.entities.Card;
 import tech.safepay.entities.Transaction;
 import tech.safepay.repositories.TransactionRepository;
@@ -40,27 +42,26 @@ public class OperationalRiskValidation {
      * - Ganha força quando combinado com velocity, VPN ou fingerprint change
      * - Peso médio (25)
      */
-    public int multipleFailedAttempts(Transaction transaction) {
-
+    public ValidationResultDto multipleFailedAttempts(Transaction transaction) {
+        ValidationResultDto result = new ValidationResultDto();
         Card card = transaction.getCard();
-
-        if (card == null) {
-            return 0;
-        }
+        if (card == null) return result;
 
         LocalDateTime windowStart = LocalDateTime.now().minusMinutes(5);
-
         List<Transaction> recentTransactions =
                 transactionRepository.findByCardAndCreatedAtAfter(card, windowStart);
 
         long failedCount = recentTransactions.stream()
-                .filter(t -> !t.getApproved())
+                .filter(t -> t.getTransactionStatus() == TransactionStatus.NOT_APPROVED)
                 .count();
 
-        return failedCount >= 3
-                ? AlertType.MULTIPLE_FAILED_ATTEMPTS.getScore()
-                : 0;
+        if (failedCount >= 3) {
+            result.addScore(AlertType.MULTIPLE_FAILED_ATTEMPTS.getScore());
+            result.addAlert(AlertType.MULTIPLE_FAILED_ATTEMPTS);
+        }
+        return result;
     }
+
 
     /**
      * SUSPICIOUS_SUCCESS_AFTER_FAILURE
@@ -87,24 +88,25 @@ public class OperationalRiskValidation {
      * - Deve elevar score global rapidamente
      * - Peso alto (35)
      */
-    public int suspiciousSuccessAfterFailure(Transaction transaction) {
-
+    public ValidationResultDto suspiciousSuccessAfterFailure(Transaction transaction) {
+        ValidationResultDto result = new ValidationResultDto();
         Card card = transaction.getCard();
-
-        if (card == null || !transaction.getApproved()) {
-            return 0;
-        }
+        if (card == null || transaction.getTransactionStatus() != TransactionStatus.APPROVED) return result;
 
         List<Transaction> lastTransactions =
                 transactionRepository.findTop5ByCardOrderByCreatedAtDesc(card);
 
         long failedBeforeApproval = lastTransactions.stream()
                 .skip(1) // ignora a transação atual
-                .filter(t -> !t.getApproved())
+                .filter(t -> t.getTransactionStatus() == TransactionStatus.NOT_APPROVED)
                 .count();
 
-        return failedBeforeApproval >= 2
-                ? AlertType.SUSPICIOUS_SUCCESS_AFTER_FAILURE.getScore()
-                : 0;
+        if (failedBeforeApproval >= 2) {
+            result.addScore(AlertType.SUSPICIOUS_SUCCESS_AFTER_FAILURE.getScore());
+            result.addAlert(AlertType.SUSPICIOUS_SUCCESS_AFTER_FAILURE);
+        }
+
+        return result;
     }
+
 }

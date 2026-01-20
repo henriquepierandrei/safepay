@@ -1,6 +1,7 @@
 package tech.safepay.validations;
 
 import org.springframework.stereotype.Component;
+import tech.safepay.dtos.validation.ValidationResultDto;
 import tech.safepay.entities.Transaction;
 
 /**
@@ -57,7 +58,7 @@ public class TransactionGlobalValidation {
     /**
      * Executa todas as validações antifraude e retorna
      * o score agregado da transação.
-     *
+     * <p>
      * Fluxo:
      * 1. Modelo externo (simulado) de anomalia
      * 2. Padrões clássicos de fraude
@@ -67,92 +68,110 @@ public class TransactionGlobalValidation {
      * 6. Dispositivo e rede
      * 7. Risco operacional
      * 8. Comportamento do usuário
-     *
+     * <p>
      * Retorno:
      * - Inteiro representando o risco total da transação
      */
-    public Integer validateAll(Transaction transaction) {
+    public ValidationResultDto validateAll(Transaction transaction) {
 
-        int fraudScore = 0;
+        ValidationResultDto finalResult = new ValidationResultDto();
 
         // =========================
         // MODELO EXTERNO (SIMULADO)
         // =========================
-        fraudScore += externalAntifraudModelSimulation
-                .anomalyModelTriggered(transaction);
+        ValidationResultDto external = externalAntifraudModelSimulation.anomalyModelTriggered(transaction);
+        finalResult.addScore(external.getScore());
+        external.getTriggeredAlerts().forEach(finalResult::addAlert);
 
         // =========================
         // PADRÕES CLÁSSICOS DE FRAUDE
         // =========================
-        fraudScore += fraudPatternsValidation
-                .cardTestingPattern(transaction);
+        ValidationResultDto cardTesting = fraudPatternsValidation.cardTestingPattern(transaction);
+        finalResult.addScore(cardTesting.getScore());
+        cardTesting.getTriggeredAlerts().forEach(finalResult::addAlert);
 
-        fraudScore += fraudPatternsValidation
-                .microTransactionPattern(transaction);
+        ValidationResultDto microTxn = fraudPatternsValidation.microTransactionPattern(transaction);
+        finalResult.addScore(microTxn.getScore());
+        microTxn.getTriggeredAlerts().forEach(finalResult::addAlert);
 
-        fraudScore += fraudPatternsValidation
-                .declineThenApprovePattern(transaction);
+        ValidationResultDto declineThenApprove = fraudPatternsValidation.declineThenApprovePattern(transaction);
+        finalResult.addScore(declineThenApprove.getScore());
+        declineThenApprove.getTriggeredAlerts().forEach(finalResult::addAlert);
 
         // =========================
         // FREQUÊNCIA & VELOCIDADE
         // =========================
-        fraudScore += frequencyAndVelocityValidation
-                .velocityAbuseValidation(transaction);
+        ValidationResultDto velocity = frequencyAndVelocityValidation.velocityAbuseValidation(transaction);
+        finalResult.addScore(velocity.getScore());
+        velocity.getTriggeredAlerts().forEach(finalResult::addAlert);
 
-        fraudScore += frequencyAndVelocityValidation
-                .burstActivityValidation(transaction);
+        ValidationResultDto burst = frequencyAndVelocityValidation.burstActivityValidation(transaction);
+        finalResult.addScore(burst.getScore());
+        burst.getTriggeredAlerts().forEach(finalResult::addAlert);
 
         // =========================
         // VALOR & LIMITE
         // =========================
-        fraudScore += limitAndAmountValidation
-                .highAmountValidation(transaction);
+        ValidationResultDto highAmount = limitAndAmountValidation.highAmountValidation(transaction);
+        finalResult.addScore(highAmount.getScore());
+        highAmount.getTriggeredAlerts().forEach(finalResult::addAlert);
 
-        fraudScore += limitAndAmountValidation
-                .limitExceededValidation(transaction);
+        ValidationResultDto limitExceeded = limitAndAmountValidation.limitExceededValidation(transaction);
+        finalResult.addScore(limitExceeded.getScore());
+        limitExceeded.getTriggeredAlerts().forEach(finalResult::addAlert);
 
         // =========================
         // LOCALIZAÇÃO
         // =========================
-        fraudScore += localizationValidation
-                .impossibleTravelValidation(transaction);
+        ValidationResultDto impossibleTravel = localizationValidation.impossibleTravelValidation(transaction);
+        finalResult.addScore(impossibleTravel.getScore());
+        impossibleTravel.getTriggeredAlerts().forEach(finalResult::addAlert);
 
-        fraudScore += localizationValidation
-                .locationAnomalyValidation(transaction);
+        ValidationResultDto locationAnomaly = localizationValidation.locationAnomalyValidation(transaction);
+        finalResult.addScore(locationAnomaly.getScore());
+        locationAnomaly.getTriggeredAlerts().forEach(finalResult::addAlert);
 
-        fraudScore += localizationValidation
-                .highRiskCountryValidation(transaction);
+        ValidationResultDto highRiskCountry = localizationValidation.highRiskCountryValidation(transaction);
+        finalResult.addScore(highRiskCountry.getScore());
+        highRiskCountry.getTriggeredAlerts().forEach(finalResult::addAlert);
 
         // =========================
         // DISPOSITIVO & REDE
         // =========================
-        fraudScore += networkAndDeviceValidation
-                .deviceFingerprintChange(transaction);
+        ValidationResultDto fingerprintChange = networkAndDeviceValidation.deviceFingerprintChange(transaction);
+        finalResult.addScore(fingerprintChange.getScore());
+        fingerprintChange.getTriggeredAlerts().forEach(finalResult::addAlert);
 
-        fraudScore += networkAndDeviceValidation
-                .newDeviceDetected(transaction);
+        ValidationResultDto newDevice = networkAndDeviceValidation.newDeviceDetected(transaction);
+        finalResult.addScore(newDevice.getScore());
+        newDevice.getTriggeredAlerts().forEach(finalResult::addAlert);
 
-        fraudScore += networkAndDeviceValidation
-                .multipleCardsSameDevice(transaction);
+        ValidationResultDto multipleCards = networkAndDeviceValidation.multipleCardsSameDevice(transaction);
+        finalResult.addScore(multipleCards.getScore());
+        multipleCards.getTriggeredAlerts().forEach(finalResult::addAlert);
 
-        fraudScore += networkAndDeviceValidation
-                .torOrProxyDetected(transaction);
+        ValidationResultDto torProxy = networkAndDeviceValidation.torOrProxyDetected(transaction);
+        finalResult.addScore(torProxy.getScore());
+        torProxy.getTriggeredAlerts().forEach(finalResult::addAlert);
 
         // =========================
         // RISCO OPERACIONAL
         // =========================
-        fraudScore += operationalRiskValidation
-                .multipleFailedAttempts(transaction);
+        ValidationResultDto failedAttempts = operationalRiskValidation.multipleFailedAttempts(transaction);
+        finalResult.addScore(failedAttempts.getScore());
+        failedAttempts.getTriggeredAlerts().forEach(finalResult::addAlert);
 
-        fraudScore += operationalRiskValidation
-                .suspiciousSuccessAfterFailure(transaction);
+        ValidationResultDto suspiciousSuccess = operationalRiskValidation.suspiciousSuccessAfterFailure(transaction);
+        finalResult.addScore(suspiciousSuccess.getScore());
+        suspiciousSuccess.getTriggeredAlerts().forEach(finalResult::addAlert);
 
         // =========================
         // COMPORTAMENTO DO USUÁRIO
         // =========================
-        fraudScore += userBehaviorValidation
-                .timeOfDayAnomaly(transaction);
+        ValidationResultDto timeOfDay = userBehaviorValidation.timeOfDayAnomaly(transaction);
+        finalResult.addScore(timeOfDay.getScore());
+        timeOfDay.getTriggeredAlerts().forEach(finalResult::addAlert);
 
-        return fraudScore;
+        return finalResult;
     }
 }

@@ -2,6 +2,8 @@ package tech.safepay.validations;
 
 import org.springframework.stereotype.Component;
 import tech.safepay.Enums.AlertType;
+import tech.safepay.Enums.TransactionStatus;
+import tech.safepay.dtos.validation.ValidationResultDto;
 import tech.safepay.entities.Card;
 import tech.safepay.entities.Transaction;
 import tech.safepay.repositories.TransactionRepository;
@@ -43,13 +45,11 @@ public class FraudPatternsValidation {
      * - Altíssimo valor preditivo
      * - Normalmente combinado com velocity e device signals
      */
-    public int cardTestingPattern(Transaction transaction) {
+    public ValidationResultDto cardTestingPattern(Transaction transaction) {
+        ValidationResultDto result = new ValidationResultDto();
 
         Card card = transaction.getCard();
-
-        if (card == null) {
-            return 0;
-        }
+        if (card == null) return result;
 
         LocalDateTime windowStart = LocalDateTime.now().minusMinutes(10);
 
@@ -64,17 +64,12 @@ public class FraudPatternsValidation {
                 .filter(t -> t.getAmount().compareTo(BigDecimal.valueOf(5)) <= 0)
                 .count();
 
-        // Card testing agressivo (quase determinístico)
-        if (veryLowValueCount >= 3) {
-            return AlertType.CARD_TESTING.getScore();
+        if (veryLowValueCount >= 3 || lowValueCount >= 5) {
+            result.addScore(AlertType.CARD_TESTING.getScore());
+            result.addAlert(AlertType.CARD_TESTING);
         }
 
-        // Card testing clássico
-        if (lowValueCount >= 5) {
-            return AlertType.CARD_TESTING.getScore();
-        }
-
-        return 0;
+        return result;
     }
 
 
@@ -103,31 +98,29 @@ public class FraudPatternsValidation {
      * Observações:
      * - Sinal forte, mas abaixo de card testing puro
      */
-    public int microTransactionPattern(Transaction transaction) {
+    public ValidationResultDto microTransactionPattern(Transaction transaction) {
+        ValidationResultDto result = new ValidationResultDto();
 
         Card card = transaction.getCard();
-
-        if (card == null) {
-            return 0;
-        }
+        if (card == null) return result;
 
         List<Transaction> lastTransactions =
                 transactionRepository.findTop20ByCardOrderByCreatedAtDesc(card);
 
-        if (lastTransactions.size() < 5) {
-            return 0;
-        }
+        if (lastTransactions.size() < 5) return result;
 
         long microCount = lastTransactions.stream()
                 .filter(t -> t.getAmount().compareTo(BigDecimal.valueOf(2)) <= 0)
                 .count();
 
-        // Exemplo: mais de 60% das últimas transações são microvalores
         double ratio = (double) microCount / lastTransactions.size();
 
-        return ratio >= 0.6
-                ? AlertType.MICRO_TRANSACTION_PATTERN.getScore()
-                : 0;
+        if (ratio >= 0.6) {
+            result.addScore(AlertType.MICRO_TRANSACTION_PATTERN.getScore());
+            result.addAlert(AlertType.MICRO_TRANSACTION_PATTERN);
+        }
+
+        return result;
     }
 
     /**
@@ -155,30 +148,31 @@ public class FraudPatternsValidation {
      * - Muito comum em ataques automatizados
      * - Forte quando combinado com device ou IP suspeito
      */
-    public int declineThenApprovePattern(Transaction transaction) {
+    public ValidationResultDto declineThenApprovePattern(Transaction transaction) {
+        ValidationResultDto result = new ValidationResultDto();
 
         Card card = transaction.getCard();
-
-        if (card == null || Boolean.FALSE.equals(transaction.getApproved())) {
-            return 0;
+        if (card == null || transaction.getTransactionStatus() != TransactionStatus.APPROVED) {
+            return result;
         }
 
         List<Transaction> lastTransactions =
                 transactionRepository.findTop10ByCardOrderByCreatedAtDesc(card);
 
-        if (lastTransactions.size() < 4) {
-            return 0;
-        }
+        if (lastTransactions.size() < 4) return result;
 
         long declinedCount = lastTransactions.stream()
                 .skip(1) // ignora a transação atual
                 .limit(3)
-                .filter(t -> Boolean.FALSE.equals(t.getApproved()))
+                .filter(t -> t.getTransactionStatus() == TransactionStatus.NOT_APPROVED)
                 .count();
 
-        // Exemplo: 3 recusas seguidas antes de uma aprovação
-        return declinedCount >= 3
-                ? AlertType.DECLINE_THEN_APPROVE_PATTERN.getScore()
-                : 0;
+        if (declinedCount >= 3) {
+            result.addScore(AlertType.DECLINE_THEN_APPROVE_PATTERN.getScore());
+            result.addAlert(AlertType.DECLINE_THEN_APPROVE_PATTERN);
+        }
+
+        return result;
     }
+
 }

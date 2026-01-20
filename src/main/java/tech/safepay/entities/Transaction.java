@@ -3,6 +3,8 @@ package tech.safepay.entities;
 import jakarta.persistence.*;
 import tech.safepay.Enums.DeviceType;
 import tech.safepay.Enums.MerchantCategory;
+import tech.safepay.Enums.TransactionStatus;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -39,7 +41,9 @@ public class Transaction {
 
     private String ipAddress;
 
-    private Boolean approved;
+    @Enumerated(EnumType.STRING)
+    private TransactionStatus transactionStatus;
+
     private Boolean isFraud;
 
     private LocalDateTime createdAt;
@@ -113,12 +117,12 @@ public class Transaction {
         this.ipAddress = ipAddress;
     }
 
-    public Boolean getApproved() {
-        return approved;
+    public TransactionStatus getTransactionStatus() {
+        return transactionStatus;
     }
 
-    public void setApproved(Boolean approved) {
-        this.approved = approved;
+    public void setTransactionStatus(TransactionStatus transactionStatus) {
+        this.transactionStatus = transactionStatus;
     }
 
     public Boolean getFraud() {

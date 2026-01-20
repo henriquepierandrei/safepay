@@ -111,9 +111,11 @@ public enum AlertType {
     // MODELO & SCORE
     // =========================
 
-    ANOMALY_MODEL_TRIGGERED(30);
+    ANOMALY_MODEL_TRIGGERED(30),
     // Modelo estatístico detectou padrão fora da normalidade.
     // Deve pesar, mas nunca decidir sozinho.
+
+    GENERIC_RISK(0);
 
 
     private final int score;

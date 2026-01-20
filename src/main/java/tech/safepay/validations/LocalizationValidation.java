@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 import tech.safepay.Enums.AlertType;
+import tech.safepay.dtos.validation.ValidationResultDto;
 import tech.safepay.entities.Card;
 import tech.safepay.entities.Transaction;
 import tech.safepay.repositories.TransactionRepository;
@@ -43,17 +44,18 @@ public class LocalizationValidation {
      * para identificar o país da transação e verificar
      * se ele está classificado como alto risco.
      */
-    public Integer highRiskCountryValidation(Transaction transaction) {
+    public ValidationResultDto highRiskCountryValidation(Transaction transaction) {
+        ValidationResultDto result = new ValidationResultDto();
+
         String countryCode = resolveCountryCode(transaction);
+        if (countryCode == null) return result;
 
-        if (countryCode == null) {
-            return 0; // dado geográfico inconclusivo
+        if (HIGH_RISK_COUNTRIES.contains(countryCode.toUpperCase())) {
+            result.addScore(AlertType.HIGH_RISK_COUNTRY.getScore());
+            result.addAlert(AlertType.HIGH_RISK_COUNTRY);
         }
 
-        if (HIGH_RISK_COUNTRIES.contains(countryCode.toUpperCase())){
-            return AlertType.HIGH_RISK_COUNTRY.getScore();
-        }
-        return 0;
+        return result;
     }
 
     /**
@@ -66,25 +68,20 @@ public class LocalizationValidation {
      *
      * Regra moderada, depende de contexto.
      */
-    public Integer locationAnomalyValidation(Transaction transaction) {
+    public ValidationResultDto locationAnomalyValidation(Transaction transaction) {
+        ValidationResultDto result = new ValidationResultDto();
+
         Card card = transaction.getCard();
-
-        List<Transaction> history =
-                transactionRepository.findTop20ByCardOrderByCreatedAtDesc(card);
-
-        if (history.size() < 5) {
-            return 0; // histórico insuficiente
-        }
+        List<Transaction> history = transactionRepository.findTop20ByCardOrderByCreatedAtDesc(card);
+        if (history.size() < 5) return result;
 
         double avgLat = history.stream()
                 .mapToDouble(t -> Double.parseDouble(t.getLatitude()))
-                .average()
-                .orElse(0);
+                .average().orElse(0);
 
         double avgLon = history.stream()
                 .mapToDouble(t -> Double.parseDouble(t.getLongitude()))
-                .average()
-                .orElse(0);
+                .average().orElse(0);
 
         double distanceKm = haversineDistance(
                 avgLat,
@@ -93,11 +90,12 @@ public class LocalizationValidation {
                 Double.parseDouble(transaction.getLongitude())
         );
 
-        // Fora do padrão histórico (ex: > 300km)
-        if (distanceKm > 300){
-            return AlertType.LOCATION_ANOMALY.getScore();
+        if (distanceKm > 300) {
+            result.addScore(AlertType.LOCATION_ANOMALY.getScore());
+            result.addAlert(AlertType.LOCATION_ANOMALY);
         }
-        return 0;
+
+        return result;
     }
 
     /**
@@ -110,15 +108,12 @@ public class LocalizationValidation {
      *
      * Sinal forte, quase determinístico de fraude.
      */
-    public Integer impossibleTravelValidation(Transaction transaction) {
+    public ValidationResultDto impossibleTravelValidation(Transaction transaction) {
+        ValidationResultDto result = new ValidationResultDto();
+
         Card card = transaction.getCard();
-
-        Optional<Transaction> lastTransaction =
-                transactionRepository.findFirstByCardOrderByCreatedAtDesc(card);
-
-        if (lastTransaction.isEmpty()) {
-            return 0; // primeira transação do cartão
-        }
+        Optional<Transaction> lastTransaction = transactionRepository.findFirstByCardOrderByCreatedAtDesc(card);
+        if (lastTransaction.isEmpty()) return result;
 
         Transaction previous = lastTransaction.get();
 
@@ -129,24 +124,17 @@ public class LocalizationValidation {
                 Double.parseDouble(transaction.getLongitude())
         );
 
-        long minutesDiff = Duration.between(
-                previous.getCreatedAt(),
-                transaction.getCreatedAt()
-        ).toMinutes();
+        long minutesDiff = Duration.between(previous.getCreatedAt(), transaction.getCreatedAt()).toMinutes();
+        if (minutesDiff <= 0) return result;
 
-        if (minutesDiff <= 0) {
-            return 0;
-        }
-
-        // Velocidade necessária em km/h
         double requiredSpeed = (distanceKm / minutesDiff) * 60;
 
-        // Acima de 900 km/h → impossível para humano comum
-
-        if (requiredSpeed > 900){
-            AlertType.IMPOSSIBLE_TRAVEL.getScore();
+        if (requiredSpeed > 900) {
+            result.addScore(AlertType.IMPOSSIBLE_TRAVEL.getScore());
+            result.addAlert(AlertType.IMPOSSIBLE_TRAVEL);
         }
-        return 0;
+
+        return result;
     }
 
     /**

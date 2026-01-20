@@ -2,6 +2,7 @@ package tech.safepay.validations;
 
 import org.springframework.stereotype.Component;
 import tech.safepay.Enums.AlertType;
+import tech.safepay.dtos.validation.ValidationResultDto;
 import tech.safepay.entities.Card;
 import tech.safepay.entities.Transaction;
 import tech.safepay.repositories.TransactionRepository;
@@ -80,24 +81,23 @@ public class LimitAndAmountValidation {
      * Atua como sinal de reforço no score global.
      */
 
-    public Integer highAmountValidation(Transaction transaction) {
+    public ValidationResultDto highAmountValidation(Transaction transaction) {
+        ValidationResultDto result = new ValidationResultDto();
+
         Card card = transaction.getCard();
         List<Transaction> transactions = getLastTransactions(card);
 
-        // Histórico insuficiente → risco neutro
-        if (transactions.size() < 5) {
-            return 0;
-        }
+        if (transactions.size() < 5) return result;
 
         BigDecimal avg = calculateAverage(transactions);
-
         BigDecimal threshold = avg.multiply(HIGH_AMOUNT_MULTIPLIER);
 
         if (transaction.getAmount().compareTo(threshold) > 0) {
-            return AlertType.HIGH_AMOUNT.getScore();
+            result.addScore(AlertType.HIGH_AMOUNT.getScore());
+            result.addAlert(AlertType.HIGH_AMOUNT);
         }
 
-        return 0;
+        return result;
     }
 
     /**
@@ -126,11 +126,12 @@ public class LimitAndAmountValidation {
      * Pode acionar bloqueios ou revisões adicionais.
      */
 
-    public Integer limitExceededValidation(Transaction transaction) {
+    public ValidationResultDto limitExceededValidation(Transaction transaction) {
+        ValidationResultDto result = new ValidationResultDto();
+
         Card card = transaction.getCard();
         List<Transaction> transactions = getLastTransactions(card);
 
-        // Soma apenas valores já comprometidos
         BigDecimal usedLimit = transactions.stream()
                 .map(Transaction::getAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -138,9 +139,10 @@ public class LimitAndAmountValidation {
         BigDecimal availableLimit = card.getCreditLimit().subtract(usedLimit);
 
         if (transaction.getAmount().compareTo(availableLimit) > 0) {
-            return AlertType.LIMIT_EXCEEDED.getScore();
+            result.addScore(AlertType.LIMIT_EXCEEDED.getScore());
+            result.addAlert(AlertType.LIMIT_EXCEEDED);
         }
 
-        return 0;
+        return result;
     }
 }

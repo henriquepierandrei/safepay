@@ -2,6 +2,7 @@ package tech.safepay.validations;
 
 import org.springframework.stereotype.Component;
 import tech.safepay.Enums.AlertType;
+import tech.safepay.dtos.validation.ValidationResultDto;
 import tech.safepay.entities.Card;
 import tech.safepay.entities.Transaction;
 import tech.safepay.repositories.TransactionRepository;
@@ -29,20 +30,19 @@ public class UserBehaviorValidation {
      * - Não bloqueia sozinho
      * - Serve como reforço para outros sinais (velocity, location, device)
      */
-    public Integer timeOfDayAnomaly(Transaction transaction) {
+    public ValidationResultDto timeOfDayAnomaly(Transaction transaction) {
+        ValidationResultDto result = new ValidationResultDto();
 
         Card card = transaction.getCard();
+        if (card == null) return result;
 
         // 1. Define o baseline: últimos 30 dias
         LocalDateTime baselineStart = LocalDateTime.now().minusDays(30);
-
         List<Transaction> historicalTransactions =
                 transactionRepository.findByCardAndCreatedAtAfter(card, baselineStart);
 
-        // Histórico insuficiente → não decide nada
-        if (historicalTransactions.size() < 10) {
-            return 0;
-        }
+        // Histórico insuficiente → risco neutro
+        if (historicalTransactions.size() < 10) return result;
 
         // 2. Calcula a média do horário das transações (em horas)
         double averageHour = historicalTransactions.stream()
@@ -57,9 +57,11 @@ public class UserBehaviorValidation {
         int allowedDeviation = 4; // horas
 
         // 5. Verifica anomalia
-        if (Math.abs(currentHour - averageHour) > allowedDeviation){
-            return AlertType.TIME_OF_DAY_ANOMALY.getScore();
+        if (Math.abs(currentHour - averageHour) > allowedDeviation) {
+            result.addScore(AlertType.TIME_OF_DAY_ANOMALY.getScore());
+            result.addAlert(AlertType.TIME_OF_DAY_ANOMALY);
         }
-        return 0;
+
+        return result;
     }
 }

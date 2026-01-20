@@ -16,13 +16,9 @@ import java.util.UUID;
 @Transactional
 public class TransactionService {
     private final TransactionRepository transactionRepository;
-    private final CardRepository cardRepository;
-    private final DeviceRepository deviceRepository;
 
     public TransactionService(TransactionRepository transactionRepository, CardRepository cardRepository, DeviceRepository deviceRepository) {
         this.transactionRepository = transactionRepository;
-        this.cardRepository = cardRepository;
-        this.deviceRepository = deviceRepository;
     }
 
     /**
@@ -36,9 +32,6 @@ public class TransactionService {
         }
         return "**** **** **** " + cardNumber.substring(cardNumber.length() - 4);
     }
-
-
-
 
 
     public TransactionResponseDto getTransactionById(UUID id) {
@@ -75,7 +68,7 @@ public class TransactionService {
                 transaction.getLongitude(),
                 deviceDto,
                 transaction.getIpAddress(),
-                transaction.getStatus(),
+                transaction.getTransactionStatus(),
                 transaction.getFraud(),
                 transaction.getCreatedAt()
         );

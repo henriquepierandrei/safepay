@@ -7,26 +7,24 @@ import org.apache.commons.net.util.SubnetUtils;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 import tech.safepay.Enums.AlertType;
+import tech.safepay.dtos.validation.ValidationResultDto;
 import tech.safepay.entities.Card;
 import tech.safepay.entities.Device;
 import tech.safepay.entities.Transaction;
 import tech.safepay.repositories.TransactionRepository;
-
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Component
 public class NetworkAndDeviceValidation {
-
     private final ObjectMapper objectMapper;
     private final TransactionRepository transactionRepository;
 
     /**
-     * Lista de blocos CIDR IPv6 associados a provedores de VPN,
-     * proxies e infraestrutura de datacenter.
-     *
-     * Carregada uma única vez no startup da aplicação.
+     * Lista de blocos CIDR IPv6 associados a VPNs / proxies.
+     * Simula base de dados de um antifraude externo.
      */
     private final List<SubnetUtils.SubnetInfo> vpnIpv6Cidrs = new ArrayList<>();
 
@@ -99,25 +97,22 @@ public class NetworkAndDeviceValidation {
      * - Sinal fraco isoladamente
      * - Muito eficiente quando combinado com fingerprint change ou VPN
      */
-    public int newDeviceDetected(Transaction transaction) {
-
+    public ValidationResultDto newDeviceDetected(Transaction transaction) {
+        ValidationResultDto result = new ValidationResultDto();
         Card card = transaction.getCard();
         Device device = transaction.getDevice();
+        if (card == null || device == null) return result;
 
-        if (card == null || device == null) {
-            return 0;
+        boolean alreadyUsed = card.getDevices()
+                .stream()
+                .anyMatch(d -> d.getId().equals(device.getId()));
+
+        if (!alreadyUsed) {
+            result.addScore(AlertType.NEW_DEVICE_DETECTED.getScore());
+            result.addAlert(AlertType.NEW_DEVICE_DETECTED);
         }
-
-        boolean alreadyUsed =
-                card.getDevices()
-                        .stream()
-                        .anyMatch(d -> d.getId().equals(device.getId()));
-
-        return alreadyUsed
-                ? 0
-                : AlertType.NEW_DEVICE_DETECTED.getScore();
+        return result;
     }
-
     /**
      * =========================
      * DEVICE_FINGERPRINT_CHANGE (25)
@@ -143,25 +138,25 @@ public class NetworkAndDeviceValidation {
      * - Sinal de força média
      * - Altamente relevante quando combinado com velocity ou VPN
      */
-    public int deviceFingerprintChange(Transaction transaction) {
-
+    public ValidationResultDto deviceFingerprintChange(Transaction transaction) {
+        ValidationResultDto result = new ValidationResultDto();
         Card card = transaction.getCard();
         Device currentDevice = transaction.getDevice();
+        if (card == null || currentDevice == null) return result;
 
-        if (card == null || currentDevice == null) {
-            return 0;
-        }
+        Optional<Transaction> lastTransaction =
+                transactionRepository.findFirstByCardOrderByCreatedAtDesc(card);
 
-        return transactionRepository
-                .findFirstByCardOrderByCreatedAtDesc(card)
-                .filter(previousTransaction ->
-                        previousTransaction.getDevice() != null &&
-                                !previousTransaction.getDevice()
-                                        .getFingerPrintId()
-                                        .equals(currentDevice.getFingerPrintId())
-                )
-                .map(t -> AlertType.DEVICE_FINGERPRINT_CHANGE.getScore())
-                .orElse(0);
+        lastTransaction.ifPresent(t -> {
+            Device prevDevice = t.getDevice();
+            if (prevDevice != null &&
+                    !prevDevice.getFingerPrintId().equals(currentDevice.getFingerPrintId())) {
+                result.addScore(AlertType.DEVICE_FINGERPRINT_CHANGE.getScore());
+                result.addAlert(AlertType.DEVICE_FINGERPRINT_CHANGE);
+            }
+        });
+
+        return result;
     }
 
     /**
@@ -184,22 +179,22 @@ public class NetworkAndDeviceValidation {
      * - Forte indicativo de fraude quando combinado com outros sinais
      * - Não bloqueia sozinho
      */
-    public int torOrProxyDetected(Transaction transaction) {
-
+    public ValidationResultDto torOrProxyDetected(Transaction transaction) {
+        ValidationResultDto result = new ValidationResultDto();
         String ip = transaction.getIpAddress();
+        if (ip == null || vpnIpv6Cidrs.isEmpty()) return result;
 
-        if (ip == null || vpnIpv6Cidrs.isEmpty()) {
-            return 0;
+        boolean isVpn = vpnIpv6Cidrs.stream()
+                .anyMatch(subnet -> subnet.isInRange(ip));
+
+        if (isVpn) {
+            result.addScore(AlertType.TOR_OR_PROXY_DETECTED.getScore());
+            result.addAlert(AlertType.TOR_OR_PROXY_DETECTED);
         }
 
-        boolean isVpn =
-                vpnIpv6Cidrs.stream()
-                        .anyMatch(subnet -> subnet.isInRange(ip));
-
-        return isVpn
-                ? AlertType.TOR_OR_PROXY_DETECTED.getScore()
-                : 0;
+        return result;
     }
+
 
     /**
      * =========================
@@ -220,18 +215,17 @@ public class NetworkAndDeviceValidation {
      * - Indicador clássico de fraude em escala
      * - Um dos sinais mais fortes do motor antifraude
      */
-    public int multipleCardsSameDevice(Transaction transaction) {
-
+    public ValidationResultDto multipleCardsSameDevice(Transaction transaction) {
+        ValidationResultDto result = new ValidationResultDto();
         Device device = transaction.getDevice();
-
-        if (device == null) {
-            return 0;
-        }
+        if (device == null) return result;
 
         int distinctCards = device.getCards().size();
+        if (distinctCards >= 3) {
+            result.addScore(AlertType.MULTIPLE_CARDS_SAME_DEVICE.getScore());
+            result.addAlert(AlertType.MULTIPLE_CARDS_SAME_DEVICE);
+        }
 
-        return distinctCards >= 3
-                ? AlertType.MULTIPLE_CARDS_SAME_DEVICE.getScore()
-                : 0;
+        return result;
     }
 }
