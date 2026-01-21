@@ -66,7 +66,7 @@ public enum AlertType {
 
 
     // =========================
-    // COMPORTAMENTO DO USUÁRIO
+    // COMPORTAMENTO DO USUÁRIO         parei aqui
     // =========================
 
     TIME_OF_DAY_ANOMALY(10),

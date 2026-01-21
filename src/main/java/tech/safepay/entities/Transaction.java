@@ -1,5 +1,6 @@
 package tech.safepay.entities;
 
+import jakarta.annotation.Nullable;
 import jakarta.persistence.*;
 import tech.safepay.Enums.DeviceType;
 import tech.safepay.Enums.MerchantCategory;
@@ -46,6 +47,10 @@ public class Transaction {
 
     @ManyToOne(optional = false)
     private Device device;
+
+    @Column(nullable = false)
+    private String deviceFingerprint;
+
 
 
     private String ipAddress;
@@ -180,5 +185,13 @@ public class Transaction {
 
     public void setCity(String city) {
         this.city = city;
+    }
+
+    public String getDeviceFingerprint() {
+        return deviceFingerprint;
+    }
+
+    public void setDeviceFingerprint(String deviceFingerprint) {
+        this.deviceFingerprint = deviceFingerprint;
     }
 }

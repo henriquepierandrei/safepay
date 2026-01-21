@@ -2,8 +2,9 @@ package tech.safepay.validations;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import inet.ipaddr.IPAddress;
+import inet.ipaddr.IPAddressString;
 import jakarta.annotation.PostConstruct;
-import org.apache.commons.net.util.SubnetUtils;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 import tech.safepay.Enums.AlertType;
@@ -12,6 +13,7 @@ import tech.safepay.entities.Card;
 import tech.safepay.entities.Device;
 import tech.safepay.entities.Transaction;
 import tech.safepay.repositories.TransactionRepository;
+
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
@@ -19,14 +21,14 @@ import java.util.Optional;
 
 @Component
 public class NetworkAndDeviceValidation {
+
     private final ObjectMapper objectMapper;
     private final TransactionRepository transactionRepository;
 
     /**
-     * Lista de blocos CIDR IPv6 associados a VPNs / proxies.
-     * Simula base de dados de um antifraude externo.
+     * Lista de blocos CIDR IPv6 associados a VPNs / proxies
      */
-    private final List<SubnetUtils.SubnetInfo> vpnIpv6Cidrs = new ArrayList<>();
+    private final List<IPAddress> vpnIpv6Cidrs = new ArrayList<>();
 
     public NetworkAndDeviceValidation(
             ObjectMapper objectMapper,
@@ -36,27 +38,9 @@ public class NetworkAndDeviceValidation {
         this.transactionRepository = transactionRepository;
     }
 
-    /**
-     * =========================
-     * VPN / TOR BLACKLIST LOAD
-     * =========================
-     *
-     * Objetivo:
-     * Carregar, em memória, a blacklist de redes IPv6 associadas
-     * a VPNs, proxies e datacenters.
-     *
-     * Fonte:
-     * Arquivo JSON versionado em resources/data,
-     * baseado em dados open-source (OpenStreetMap / Threat Intel).
-     *
-     * Estratégia:
-     * - Executado no startup (@PostConstruct)
-     * - Converte CIDRs em SubnetInfo para lookup rápido
-     *
-     * Fail-safe:
-     * - Em caso de erro, a lista é esvaziada
-     * - O sistema continua operando sem esse sinal
-     */
+    /* =====================================================
+       VPN / TOR BLACKLIST LOAD
+       ===================================================== */
     @PostConstruct
     private void loadVpnBlacklist() {
         try {
@@ -68,124 +52,97 @@ public class NetworkAndDeviceValidation {
                 JsonNode list = root.get("list");
 
                 for (JsonNode cidr : list) {
-                    SubnetUtils subnet = new SubnetUtils(cidr.asText());
-                    subnet.setInclusiveHostCount(true);
-                    vpnIpv6Cidrs.add(subnet.getInfo());
+                    IPAddress address =
+                            new IPAddressString(cidr.asText()).getAddress();
+                    if (address != null) {
+                        vpnIpv6Cidrs.add(address);
+                    }
                 }
             }
-        } catch (Exception ignored) {
-            vpnIpv6Cidrs.clear();
+        } catch (Exception e) {
+            throw new IllegalStateException(
+                    "Failed to load VPN IPv6 blacklist", e
+            );
         }
     }
 
-    /**
-     * =========================
-     * NEW_DEVICE_DETECTED (15)
-     * =========================
-     *
-     * Objetivo:
-     * Identificar quando um cartão está sendo utilizado
-     * em um device nunca associado a ele anteriormente.
-     *
-     * Estratégia:
-     * - Compara o device da transação com a lista de devices já vinculados ao cartão
-     *
-     * Regra:
-     * - Device não presente no histórico do cartão → sinal acionado
-     *
-     * Observações:
-     * - Sinal fraco isoladamente
-     * - Muito eficiente quando combinado com fingerprint change ou VPN
-     */
+    /* =====================================================
+       SHARED RULE – SOURCE OF TRUTH
+       ===================================================== */
+    private boolean isNewDevice(Transaction transaction) {
+        Device device = transaction.getDevice();
+        if (device == null) return true;
+
+        long totalTransactions =
+                transactionRepository.countByDevice(device);
+
+        // Se só existe a transação atual → device novo
+        return totalTransactions <= 1;
+    }
+
+
+
+
+    /* =====================================================
+       NEW_DEVICE_DETECTED (15)
+       ===================================================== */
     public ValidationResultDto newDeviceDetected(Transaction transaction) {
         ValidationResultDto result = new ValidationResultDto();
-        Card card = transaction.getCard();
-        Device device = transaction.getDevice();
-        if (card == null || device == null) return result;
 
-        boolean alreadyUsed = card.getDevices()
-                .stream()
-                .anyMatch(d -> d.getId().equals(device.getId()));
-
-        if (!alreadyUsed) {
+        if (isNewDevice(transaction)) {
             result.addScore(AlertType.NEW_DEVICE_DETECTED.getScore());
             result.addAlert(AlertType.NEW_DEVICE_DETECTED);
         }
+
         return result;
     }
-    /**
-     * =========================
-     * DEVICE_FINGERPRINT_CHANGE (25)
-     * =========================
-     *
-     * Objetivo:
-     * Detectar alteração de identidade biométrica entre
-     * transações consecutivas do mesmo cartão.
-     *
-     * Interpretação do fingerprint:
-     * O fingerPrintId representa uma identidade biométrica única
-     * (ex: impressão digital simulada).
-     *
-     * Estratégia:
-     * - Recupera a última transação do cartão
-     * - Compara o fingerprint do device anterior com o atual
-     *
-     * Regra:
-     * - Fingerprint diferente da transação anterior → sinal acionado
-     *
-     * Observações:
-     * - Não dispara na primeira transação
-     * - Sinal de força média
-     * - Altamente relevante quando combinado com velocity ou VPN
-     */
+
+
+
+    /* =====================================================
+       DEVICE_FINGERPRINT_CHANGE (25)
+       ===================================================== */
     public ValidationResultDto deviceFingerprintChange(Transaction transaction) {
         ValidationResultDto result = new ValidationResultDto();
-        Card card = transaction.getCard();
-        Device currentDevice = transaction.getDevice();
-        if (card == null || currentDevice == null) return result;
 
-        Optional<Transaction> lastTransaction =
-                transactionRepository.findFirstByCardOrderByCreatedAtDesc(card);
+        // Regra de ouro: device novo não gera fingerprint change
+        if (isNewDevice(transaction)) return result;
 
-        lastTransaction.ifPresent(t -> {
-            Device prevDevice = t.getDevice();
-            if (prevDevice != null &&
-                    !prevDevice.getFingerPrintId().equals(currentDevice.getFingerPrintId())) {
-                result.addScore(AlertType.DEVICE_FINGERPRINT_CHANGE.getScore());
-                result.addAlert(AlertType.DEVICE_FINGERPRINT_CHANGE);
-            }
-        });
+        transactionRepository
+                .findFirstByDeviceAndTransactionIdNotOrderByCreatedAtDesc(
+                        transaction.getDevice(),
+                        transaction.getTransactionId()
+                )
+                .ifPresent(prev -> {
+                    String prevFp = prev.getDeviceFingerprint();
+                    String currFp = transaction.getDeviceFingerprint();
+
+                    if (prevFp != null && currFp != null && !prevFp.equals(currFp)) {
+                        result.addScore(AlertType.DEVICE_FINGERPRINT_CHANGE.getScore());
+                        result.addAlert(AlertType.DEVICE_FINGERPRINT_CHANGE);
+                    }
+                });
+
 
         return result;
     }
 
-    /**
-     * =========================
-     * TOR_OR_PROXY_DETECTED (35)
-     * =========================
-     *
-     * Objetivo:
-     * Detectar uso de VPN, proxy ou infraestrutura mascarada
-     * durante a transação.
-     *
-     * Estratégia:
-     * - Verifica se o IP da transação pertence a algum
-     *   bloco CIDR listado como VPN/datacenter
-     *
-     * Regra:
-     * - IP dentro de range blacklist → sinal acionado
-     *
-     * Observações:
-     * - Forte indicativo de fraude quando combinado com outros sinais
-     * - Não bloqueia sozinho
-     */
+
+
+    /* =====================================================
+       TOR_OR_PROXY_DETECTED (35)
+       ===================================================== */
     public ValidationResultDto torOrProxyDetected(Transaction transaction) {
         ValidationResultDto result = new ValidationResultDto();
+
         String ip = transaction.getIpAddress();
         if (ip == null || vpnIpv6Cidrs.isEmpty()) return result;
 
+        IPAddress address = new IPAddressString(ip).getAddress();
+        if (address == null) return result;
+
         boolean isVpn = vpnIpv6Cidrs.stream()
-                .anyMatch(subnet -> subnet.isInRange(ip));
+                .anyMatch(cidr -> cidr.contains(address));
 
         if (isVpn) {
             result.addScore(AlertType.TOR_OR_PROXY_DETECTED.getScore());
@@ -195,28 +152,12 @@ public class NetworkAndDeviceValidation {
         return result;
     }
 
-
-    /**
-     * =========================
-     * MULTIPLE_CARDS_SAME_DEVICE (50)
-     * =========================
-     *
-     * Objetivo:
-     * Detectar uso do mesmo device (fingerprint físico)
-     * para múltiplos cartões distintos.
-     *
-     * Estratégia:
-     * - Conta quantos cartões diferentes estão associados ao device
-     *
-     * Regra:
-     * - Device utilizado por 3 ou mais cartões → sinal acionado
-     *
-     * Observações:
-     * - Indicador clássico de fraude em escala
-     * - Um dos sinais mais fortes do motor antifraude
-     */
+    /* =====================================================
+       MULTIPLE_CARDS_SAME_DEVICE (50)
+       ===================================================== */
     public ValidationResultDto multipleCardsSameDevice(Transaction transaction) {
         ValidationResultDto result = new ValidationResultDto();
+
         Device device = transaction.getDevice();
         if (device == null) return result;
 

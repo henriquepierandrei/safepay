@@ -117,7 +117,13 @@ public class LocalizationValidation {
         ValidationResultDto result = new ValidationResultDto();
 
         Card card = transaction.getCard();
-        Optional<Transaction> lastTransaction = transactionRepository.findFirstByCardOrderByCreatedAtDesc(card);
+        Optional<Transaction> lastTransaction =
+                transactionRepository
+                        .findFirstByCardAndTransactionIdNotOrderByCreatedAtDesc(
+                                card,
+                                transaction.getTransactionId()
+                        );
+
         if (lastTransaction.isEmpty()) return result;
 
         Transaction previous = lastTransaction.get();

@@ -109,10 +109,10 @@ public class TransactionGenerator {
             );
         }
 
+        var device = devices.get(RANDOM.nextInt(devices.size()));
 
-        transaction.setDevice(
-                devices.get(RANDOM.nextInt(devices.size()))
-        );
+        transaction.setDevice(device);
+        transaction.setDeviceFingerprint(device.getFingerPrintId());
 
         // Localização baseada no histórico do cartão
         String[] location = generateLocation.generateLocation(card);
@@ -185,6 +185,7 @@ public class TransactionGenerator {
         Transaction transaction = new Transaction();
         transaction.setCard(card);
         transaction.setDevice(device);
+        transaction.setDeviceFingerprint(device.getFingerPrintId());
 
         transaction.setAmount(manualTransactionDto.amount());
         transaction.setMerchantCategory(manualTransactionDto.merchantCategory());
