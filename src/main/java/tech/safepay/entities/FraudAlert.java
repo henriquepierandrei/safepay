@@ -25,14 +25,10 @@ public class FraudAlert {
     @JoinColumn(name = "card_id")
     private Card card;
 
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(
-            name = "fraud_alert_types_tb",
-            joinColumns = @JoinColumn(name = "alert_id")
-    )
+
     @Enumerated(EnumType.STRING)
-    @Column(name = "alert_type")
     private List<AlertType> alertTypes;
+
 
     @Enumerated(EnumType.STRING)
     private Severity severity;

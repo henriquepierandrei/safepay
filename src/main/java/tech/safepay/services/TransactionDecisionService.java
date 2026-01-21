@@ -62,8 +62,6 @@ public class TransactionDecisionService {
         // 4️⃣ Cria um único FraudAlert com todos os alert types (opcional: salvar depois)
         if (!triggeredAlerts.isEmpty()) {
             FraudAlert alert = fraudAlertFactory.create(transaction, triggeredAlerts, totalScore);
-            // Se quiser salvar agora:
-            // fraudAlertRepository.save(alert);
         }
 
         // 5️⃣ Retorna ValidationResultDto consolidado

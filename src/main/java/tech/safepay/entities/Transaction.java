@@ -34,6 +34,15 @@ public class Transaction {
     @Column(length = 100)
     private String longitude;
 
+    @Column(length = 100)
+    private String countryCode;
+
+    @Column(length = 100)
+    private String state;
+
+    @Column(length = 100)
+    private String city;
+
 
     @ManyToOne(optional = false)
     private Device device;
@@ -147,5 +156,29 @@ public class Transaction {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public String getCountryCode() {
+        return countryCode;
+    }
+
+    public void setCountryCode(String countryCode) {
+        this.countryCode = countryCode;
+    }
+
+    public String getState() {
+        return state;
+    }
+
+    public void setState(String state) {
+        this.state = state;
+    }
+
+    public String getCity() {
+        return city;
+    }
+
+    public void setCity(String city) {
+        this.city = city;
     }
 }

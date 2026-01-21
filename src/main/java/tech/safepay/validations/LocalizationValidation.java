@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 import tech.safepay.Enums.AlertType;
+import tech.safepay.configs.ResolveLocalizationConfig;
 import tech.safepay.dtos.validation.ValidationResultDto;
 import tech.safepay.entities.Card;
 import tech.safepay.entities.Transaction;
@@ -22,6 +23,7 @@ public class LocalizationValidation {
 
     private final TransactionRepository transactionRepository;
     private final RestTemplate restTemplate = new RestTemplate();
+    private final ResolveLocalizationConfig resolveLocalizationConfig;
 
     /**
      * Lista de países com alto índice de fraude.
@@ -31,8 +33,9 @@ public class LocalizationValidation {
             "RU", "NG", "IR", "KP", "UA"
     );
 
-    public LocalizationValidation(TransactionRepository transactionRepository) {
+    public LocalizationValidation(TransactionRepository transactionRepository, ResolveLocalizationConfig resolveLocalizationConfig) {
         this.transactionRepository = transactionRepository;
+        this.resolveLocalizationConfig = resolveLocalizationConfig;
     }
 
     /**
@@ -47,8 +50,10 @@ public class LocalizationValidation {
     public ValidationResultDto highRiskCountryValidation(Transaction transaction) {
         ValidationResultDto result = new ValidationResultDto();
 
-        String countryCode = resolveCountryCode(transaction);
+        String countryCode = resolveLocalizationConfig.resolve(transaction.getLatitude(), transaction.getLongitude()).countryCode();
         if (countryCode == null) return result;
+
+        System.out.println(countryCode);
 
         if (HIGH_RISK_COUNTRIES.contains(countryCode.toUpperCase())) {
             result.addScore(AlertType.HIGH_RISK_COUNTRY.getScore());
@@ -135,41 +140,6 @@ public class LocalizationValidation {
         }
 
         return result;
-    }
-
-    /**
-     * =========================
-     * Reverse Geocoding (Nominatim)
-     * =========================
-     *
-     * Converte latitude/longitude em country code (ISO-2).
-     * Serviço open-source baseado em OpenStreetMap.
-     */
-    private String resolveCountryCode(Transaction transaction) {
-
-        String url = String.format(
-                "https://nominatim.openstreetmap.org/reverse?format=json&lat=%s&lon=%s",
-                transaction.getLatitude(),
-                transaction.getLongitude()
-        );
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.set("User-Agent", "SafePay-Antifraud/1.0");
-
-        HttpEntity<Void> entity = new HttpEntity<>(headers);
-
-        ResponseEntity<Map> response =
-                restTemplate.exchange(url, HttpMethod.GET, entity, Map.class);
-
-        Map body = response.getBody();
-
-        if (body == null || !body.containsKey("address")) {
-            return null;
-        }
-
-        Map address = (Map) body.get("address");
-
-        return (String) address.get("country_code"); // ex: "br"
     }
 
     /**

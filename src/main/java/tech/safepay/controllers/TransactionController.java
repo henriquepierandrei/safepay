@@ -2,6 +2,7 @@ package tech.safepay.controllers;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import tech.safepay.dtos.transaction.ManualTransactionDto;
 import tech.safepay.dtos.transaction.TransactionResponseDto;
 import tech.safepay.entities.Transaction;
 import tech.safepay.services.TransactionDecisionService;
@@ -32,7 +33,18 @@ public class TransactionController {
     @PostMapping("/process")
     public ResponseEntity<TransactionPipelineService.TransactionDecisionResponse> processTransaction() {
         // processa pipeline, já retorna DTO seguro
-        var result = transactionPipelineService.process();
+        var result = transactionPipelineService.process(false, null);
+        return ResponseEntity.ok(result);
+    }
+
+
+    /**
+     * Simula uma nova transação de forma manual passando por todo o pipeline antifraude.
+     */
+    @PostMapping("/manual")
+    public ResponseEntity<TransactionPipelineService.TransactionDecisionResponse> processManualTransaction(@RequestBody ManualTransactionDto manualTransactionDto) {
+        // processa pipeline, já retorna DTO seguro
+        var result = transactionPipelineService.process(true, manualTransactionDto);
         return ResponseEntity.ok(result);
     }
 

@@ -1,9 +1,11 @@
 package tech.safepay.services;
 
+import jakarta.annotation.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tech.safepay.Enums.AlertType;
 import tech.safepay.Enums.TransactionStatus;
+import tech.safepay.dtos.transaction.ManualTransactionDto;
 import tech.safepay.dtos.validation.ValidationResultDto;
 import tech.safepay.entities.FraudAlert;
 import tech.safepay.entities.Transaction;
@@ -40,10 +42,23 @@ public class TransactionPipelineService {
      * 5. Retorna DTO seguro
      */
     @Transactional
-    public TransactionPipelineService.TransactionDecisionResponse process() {
+    public TransactionPipelineService.TransactionDecisionResponse process( boolean isManual,
+                                                                           @Nullable ManualTransactionDto manualTransactionDto
+    ) {
 
-        // 1️⃣ Geração da transação
-        Transaction transaction = transactionGenerator.generateNormalTransaction();
+        Transaction transaction;
+
+        if (isManual) {
+            if (manualTransactionDto == null) {
+                throw new IllegalArgumentException(
+                        "ManualTransactionDto must be provided for manual processing"
+                );
+            }
+            transaction = transactionGenerator.generateManualTransaction(manualTransactionDto);
+        } else {
+            transaction = transactionGenerator.generateNormalTransaction();
+        }
+
 
         // 2️⃣ Avaliação antifraude (retorna ValidationResultDto)
         ValidationResultDto validationResult = decisionService.evaluate(transaction);
@@ -74,7 +89,7 @@ public class TransactionPipelineService {
 
 
     /**
-     * DTO FINAL — NÃO VAZA ENTIDADE
+     * DTO FINAL
      */
     public record TransactionDecisionResponse(
             UUID transactionId,
