@@ -109,5 +109,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
             UUID transactionId
     );
 
+    List<Transaction> findByCard(Card card);
+
 
 }

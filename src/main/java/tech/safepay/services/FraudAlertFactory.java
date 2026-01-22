@@ -81,9 +81,9 @@ public class FraudAlertFactory {
      * - CRITICAL: bloqueio imediato / ação automática
      */
     private Severity resolveSeverity(int score) {
-        if (score >= 80) return Severity.CRITICAL;
-        if (score >= 50) return Severity.HIGH;
-        if (score >= 30) return Severity.MEDIUM;
+        if (score >= 100) return Severity.CRITICAL;
+        if (score >= 70) return Severity.HIGH;
+        if (score >= 50) return Severity.MEDIUM;
         return Severity.LOW;
     }
 

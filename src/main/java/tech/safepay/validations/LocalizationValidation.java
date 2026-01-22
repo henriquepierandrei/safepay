@@ -95,6 +95,15 @@ public class LocalizationValidation {
                 Double.parseDouble(transaction.getLongitude())
         );
 
+        double txLat = Double.parseDouble(transaction.getLatitude().trim());
+        double txLon = Double.parseDouble(transaction.getLongitude().trim());
+
+
+        System.out.println("avgLat: " + avgLat + ", avgLon: " + avgLon);
+        System.out.println("txLat: " + txLat + ", txLon: " + txLon);
+        System.out.println("distanceKm: " + distanceKm);
+
+
         if (distanceKm > 300) {
             result.addScore(AlertType.LOCATION_ANOMALY.getScore());
             result.addAlert(AlertType.LOCATION_ANOMALY);

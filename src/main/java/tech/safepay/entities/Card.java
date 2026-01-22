@@ -37,6 +37,7 @@ public class Card {
 
     private LocalDate expirationDate;
     private BigDecimal creditLimit;
+    private BigDecimal remainingLimit;
 
     @Enumerated(EnumType.STRING)
     private CardStatus status;
@@ -128,5 +129,13 @@ public class Card {
 
     public void setDevices(List<Device> devices) {
         this.devices = devices;
+    }
+
+    public BigDecimal getRemainingLimit() {
+        return remainingLimit;
+    }
+
+    public void setRemainingLimit(BigDecimal remainingLimit) {
+        this.remainingLimit = remainingLimit;
     }
 }

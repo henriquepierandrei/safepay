@@ -19,13 +19,13 @@ public enum AlertType {
     // FREQUÊNCIA & VELOCIDADE
     // =========================
 
-    VELOCITY_ABUSE(35),
+    VELOCITY_ABUSE(42),
     // Muitas transações em curto intervalo.
     // Um dos sinais mais fortes de fraude real.
 
-    BURST_ACTIVITY(25),
+    BURST_ACTIVITY(30),
     // Pico súbito de atividade fora do padrão histórico.
-    // Complementa VELOCITY olhando o “formato” do comportamento.
+    // Complementa VELOCITY olhando o "formato" do comportamento.
 
 
     // =========================
@@ -45,10 +45,10 @@ public enum AlertType {
     // Forte, mas não decisivo sozinho.
 
     // =========================
-    // DISPOSITIVO & REDE                   falta fazer tbm
+    // DISPOSITIVO & REDE
     // =========================
 
-    NEW_DEVICE_DETECTED(15),
+    NEW_DEVICE_DETECTED(10),
     // Device nunca utilizado anteriormente.
     // Sozinho é fraco, mas ótimo em combinação.
 
@@ -56,7 +56,7 @@ public enum AlertType {
     // Alteração relevante no fingerprint do dispositivo.
     // Indica troca real de ambiente ou tentativa de evasão.
 
-    TOR_OR_PROXY_DETECTED(35),
+    TOR_OR_PROXY_DETECTED(30),
     // Uso de VPN, proxy ou TOR.
     // Forte indicativo quando somado a outros sinais.
 
@@ -66,14 +66,12 @@ public enum AlertType {
 
 
     // =========================
-    // COMPORTAMENTO DO USUÁRIO         parei aqui
+    // COMPORTAMENTO DO USUÁRIO
     // =========================
 
-    TIME_OF_DAY_ANOMALY(10),
+    TIME_OF_DAY_ANOMALY(6),
     // Horário atípico para o usuário.
     // Sinal fraco, mas barato e útil como complemento.
-
-
 
 
     // =========================
@@ -88,7 +86,7 @@ public enum AlertType {
     // Sequência de valores muito baixos.
     // Variante de card testing, mas menos agressiva.
 
-    DECLINE_THEN_APPROVE_PATTERN(30),
+    DECLINE_THEN_APPROVE_PATTERN(38),
     // Múltiplas recusas seguidas de aprovação.
     // Muito comum após brute force de dados.
 
@@ -115,7 +113,19 @@ public enum AlertType {
     // Modelo estatístico detectou padrão fora da normalidade.
     // Deve pesar, mas nunca decidir sozinho.
 
-    GENERIC_RISK(0);
+
+    // =========================
+    // LIMITE & EXPIRAÇÃO
+    // =========================
+
+        CREDIT_LIMIT_REACHED(40),
+    // Tentativa de transação que atinge ou ultrapassa o limite de crédito do cartão.
+    // Forte indicador de risco, especialmente se combinado com outros alertas.
+
+        EXPIRATION_DATE_APPROACHING(25);
+    // Transação próxima da data de expiração do cartão.
+    // Sinal moderado de risco operacional ou possível tentativa de uso fraudulento.
+
 
 
     private final int score;
@@ -126,5 +136,12 @@ public enum AlertType {
 
     public int getScore() {
         return score;
+    }
+
+    public Severity getSeverity() {
+        if (score >= 100) return Severity.CRITICAL;
+        if (score >= 70) return Severity.HIGH;
+        if (score >= 50) return Severity.MEDIUM;
+        return Severity.LOW;
     }
 }

@@ -2,9 +2,11 @@ package tech.safepay.entities;
 
 
 import jakarta.persistence.*;
+import tech.safepay.Enums.MerchantCategory;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -22,16 +24,14 @@ public class CardPattern {
     private BigDecimal avgTransactionAmount;
     private BigDecimal maxTransactionAmount;
 
-    @Column(columnDefinition = "json")
-    private String commonCategories;
+    @Enumerated(EnumType.STRING)
+    private List<MerchantCategory> commonCategories;
 
-    @Column(columnDefinition = "json")
-    private String commonLocations;
+    private List<String> commonLocations;
 
-    private Integer transactionFrequency;
+    private Integer transactionFrequencyPerDay;
 
-    @Column(columnDefinition = "json")
-    private String preferredHours;
+    private List<LocalDateTime> preferredHours;
 
     private LocalDateTime lastUpdated;
 
@@ -72,36 +72,12 @@ public class CardPattern {
         this.maxTransactionAmount = maxTransactionAmount;
     }
 
-    public String getCommonCategories() {
-        return commonCategories;
-    }
-
-    public void setCommonCategories(String commonCategories) {
-        this.commonCategories = commonCategories;
-    }
-
-    public String getCommonLocations() {
+    public List<String> getCommonLocations() {
         return commonLocations;
     }
 
-    public void setCommonLocations(String commonLocations) {
+    public void setCommonLocations(List<String> commonLocations) {
         this.commonLocations = commonLocations;
-    }
-
-    public Integer getTransactionFrequency() {
-        return transactionFrequency;
-    }
-
-    public void setTransactionFrequency(Integer transactionFrequency) {
-        this.transactionFrequency = transactionFrequency;
-    }
-
-    public String getPreferredHours() {
-        return preferredHours;
-    }
-
-    public void setPreferredHours(String preferredHours) {
-        this.preferredHours = preferredHours;
     }
 
     public LocalDateTime getLastUpdated() {
@@ -110,5 +86,29 @@ public class CardPattern {
 
     public void setLastUpdated(LocalDateTime lastUpdated) {
         this.lastUpdated = lastUpdated;
+    }
+
+    public List<MerchantCategory> getCommonCategories() {
+        return commonCategories;
+    }
+
+    public void setCommonCategories(List<MerchantCategory> commonCategories) {
+        this.commonCategories = commonCategories;
+    }
+
+    public Integer getTransactionFrequencyPerDay() {
+        return transactionFrequencyPerDay;
+    }
+
+    public void setTransactionFrequencyPerDay(Integer transactionFrequencyPerDay) {
+        this.transactionFrequencyPerDay = transactionFrequencyPerDay;
+    }
+
+    public List<LocalDateTime> getPreferredHours() {
+        return preferredHours;
+    }
+
+    public void setPreferredHours(List<LocalDateTime> preferredHours) {
+        this.preferredHours = preferredHours;
     }
 }

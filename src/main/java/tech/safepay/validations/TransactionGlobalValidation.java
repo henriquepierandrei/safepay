@@ -34,6 +34,7 @@ public class TransactionGlobalValidation {
     private final NetworkAndDeviceValidation networkAndDeviceValidation;
     private final OperationalRiskValidation operationalRiskValidation;
     private final UserBehaviorValidation userBehaviorValidation;
+    private final LimitAndExpirationValidation limitAndExpirationValidation;
 
     public TransactionGlobalValidation(
             ExternalAntifraudModelSimulation externalAntifraudModelSimulation,
@@ -43,7 +44,8 @@ public class TransactionGlobalValidation {
             LocalizationValidation localizationValidation,
             NetworkAndDeviceValidation networkAndDeviceValidation,
             OperationalRiskValidation operationalRiskValidation,
-            UserBehaviorValidation userBehaviorValidation
+            UserBehaviorValidation userBehaviorValidation,
+            LimitAndExpirationValidation limitAndExpirationValidation
     ) {
         this.externalAntifraudModelSimulation = externalAntifraudModelSimulation;
         this.fraudPatternsValidation = fraudPatternsValidation;
@@ -53,6 +55,7 @@ public class TransactionGlobalValidation {
         this.networkAndDeviceValidation = networkAndDeviceValidation;
         this.operationalRiskValidation = operationalRiskValidation;
         this.userBehaviorValidation = userBehaviorValidation;
+        this.limitAndExpirationValidation = limitAndExpirationValidation;
     }
 
     /**
@@ -171,6 +174,13 @@ public class TransactionGlobalValidation {
         ValidationResultDto timeOfDay = userBehaviorValidation.timeOfDayAnomaly(transaction);
         finalResult.addScore(timeOfDay.getScore());
         timeOfDay.getTriggeredAlerts().forEach(finalResult::addAlert);
+
+        // =========================
+        // LIMITE & EXPIRAÇÃO
+        // =========================
+        ValidationResultDto limitAndCreditReached = limitAndExpirationValidation.validate(transaction);
+        finalResult.addScore(limitAndCreditReached.getScore());
+        limitAndCreditReached.getTriggeredAlerts().forEach(finalResult::addAlert);
 
         return finalResult;
     }

@@ -4,6 +4,7 @@ import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 import tech.safepay.dtos.cards.CardDataResponseDto;
 import tech.safepay.dtos.device.DeviceListResponseDto;
+import tech.safepay.dtos.transaction.ResolvedLocalizationDto;
 import tech.safepay.dtos.transaction.TransactionResponseDto;
 import tech.safepay.exceptions.transaction.TransactionNotFoundException;
 import tech.safepay.repositories.CardRepository;
@@ -66,6 +67,12 @@ public class TransactionService {
                 transaction.getTransactionDateAndTime(),
                 transaction.getLatitude(),
                 transaction.getLongitude(),
+                new ResolvedLocalizationDto(
+                        transaction.getCountryCode(),
+                        transaction.getState(),
+                        transaction.getCity()),
+                null,
+                null,
                 deviceDto,
                 transaction.getIpAddress(),
                 transaction.getTransactionStatus(),

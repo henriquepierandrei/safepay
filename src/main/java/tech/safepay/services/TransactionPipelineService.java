@@ -4,8 +4,12 @@ import jakarta.annotation.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tech.safepay.Enums.AlertType;
+import tech.safepay.Enums.DeviceType;
 import tech.safepay.Enums.TransactionStatus;
+import tech.safepay.dtos.device.DeviceListResponseDto;
 import tech.safepay.dtos.transaction.ManualTransactionDto;
+import tech.safepay.dtos.transaction.ResolvedLocalizationDto;
+import tech.safepay.dtos.transaction.TransactionResponseDto;
 import tech.safepay.dtos.validation.ValidationResultDto;
 import tech.safepay.entities.FraudAlert;
 import tech.safepay.entities.Transaction;
@@ -42,8 +46,9 @@ public class TransactionPipelineService {
      * 5. Retorna DTO seguro
      */
     @Transactional
-    public TransactionPipelineService.TransactionDecisionResponse process( boolean isManual,
-                                                                           @Nullable ManualTransactionDto manualTransactionDto
+    public TransactionResponseDto process(boolean isManual,
+                                          boolean successForce,
+                                          @Nullable ManualTransactionDto manualTransactionDto
     ) {
 
         Transaction transaction;
@@ -54,14 +59,14 @@ public class TransactionPipelineService {
                         "ManualTransactionDto must be provided for manual processing"
                 );
             }
-            transaction = transactionGenerator.generateManualTransaction(manualTransactionDto);
+            transaction = transactionGenerator.generateManualTransaction(manualTransactionDto, successForce);
         } else {
             transaction = transactionGenerator.generateNormalTransaction();
         }
 
 
         // 2️⃣ Avaliação antifraude (retorna ValidationResultDto)
-        ValidationResultDto validationResult = decisionService.evaluate(transaction);
+        ValidationResultDto validationResult = decisionService.evaluate(transaction,  successForce);
 
         // 3️⃣ Define status da transação já dentro do evaluate
         transactionRepository.save(transaction);
@@ -78,24 +83,34 @@ public class TransactionPipelineService {
         }
 
         // 5️⃣ Retorno DTO para API
-        return new TransactionDecisionResponse(
-                transaction.getTransactionId(),
+        return new TransactionResponseDto(
+                null,
+                transaction.getMerchantCategory(),
+                transaction.getAmount(),
+                transaction.getTransactionDateAndTime(),
+                transaction.getLatitude(),
+                transaction.getLongitude(),
+                new ResolvedLocalizationDto(
+                        transaction.getCountryCode(),
+                        transaction.getState(),
+                        transaction.getCity()),
+
+                validationResult,
+                alert.getSeverity(),
+                new DeviceListResponseDto.DeviceDto(
+                        transaction.getDevice().getId(),
+                        transaction.getDevice().getFingerPrintId(),
+                        transaction.getDevice().getDeviceType(),
+                        transaction.getDevice().getOs(),
+                        transaction.getDevice().getBrowser()
+                ),
+                transaction.getIpAddress(),
                 transaction.getTransactionStatus(),
                 transaction.getFraud(),
-                validationResult.getScore(),
-                alert == null ? List.of() : alert.getAlertTypes() // lista única
+                transaction.getCreatedAt()
+
         );
     }
 
 
-    /**
-     * DTO FINAL
-     */
-    public record TransactionDecisionResponse(
-            UUID transactionId,
-            TransactionStatus transactionStatus,
-            boolean fraud,
-            int fraudScore,
-            List<AlertType> alertTypes
-    ) {}
 }

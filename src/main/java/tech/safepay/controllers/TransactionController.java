@@ -31,9 +31,10 @@ public class TransactionController {
      * Simula uma nova transação passando por todo o pipeline antifraude.
      */
     @PostMapping("/process")
-    public ResponseEntity<TransactionPipelineService.TransactionDecisionResponse> processTransaction() {
+    public ResponseEntity<TransactionResponseDto> processTransaction(@RequestParam(name = "successForce") boolean b) {
         // processa pipeline, já retorna DTO seguro
-        var result = transactionPipelineService.process(false, null);
+
+        var result = transactionPipelineService.process(false, b, null);
         return ResponseEntity.ok(result);
     }
 
@@ -42,9 +43,9 @@ public class TransactionController {
      * Simula uma nova transação de forma manual passando por todo o pipeline antifraude.
      */
     @PostMapping("/manual")
-    public ResponseEntity<TransactionPipelineService.TransactionDecisionResponse> processManualTransaction(@RequestBody ManualTransactionDto manualTransactionDto) {
+    public ResponseEntity<TransactionResponseDto> processManualTransaction(@RequestParam(name = "successForce") boolean b, @RequestBody ManualTransactionDto manualTransactionDto) {
         // processa pipeline, já retorna DTO seguro
-        var result = transactionPipelineService.process(true, manualTransactionDto);
+        var result = transactionPipelineService.process(true, b, manualTransactionDto);
         return ResponseEntity.ok(result);
     }
 

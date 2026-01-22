@@ -54,7 +54,12 @@ public class CardService {
             card.setCreatedAt(LocalDateTime.now());
             card.setExpirationDate(defaultCardGenerator.generateExpirationDate());
             card.setRiskScore(defaultCardGenerator.generateRiskScore());
-            card.setCreditLimit(defaultCardGenerator.generateCreditLimit());
+
+            var credit = defaultCardGenerator.generateCreditLimit();
+            card.setCreditLimit(credit);
+            card.setRemainingLimit(credit);
+
+
             card.setStatus(CardStatus.ACTIVE);
             card.setCardHolderName(defaultCardGenerator.generateName());
             cardRepository.saveAndFlush(card);

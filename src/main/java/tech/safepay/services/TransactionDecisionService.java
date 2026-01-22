@@ -6,23 +6,25 @@ import tech.safepay.Enums.TransactionStatus;
 import tech.safepay.dtos.validation.ValidationResultDto;
 import tech.safepay.entities.FraudAlert;
 import tech.safepay.entities.Transaction;
+import tech.safepay.repositories.CardRepository;
 import tech.safepay.validations.TransactionGlobalValidation;
-
-import java.util.ArrayList;
+import java.math.BigDecimal;
 import java.util.List;
 
 @Service
 public class TransactionDecisionService {
 
     private final TransactionGlobalValidation validation;
+    private final CardPatternService cardPatternService;
     private final FraudAlertFactory fraudAlertFactory;
+    private final CardRepository cardRepository;
 
-    public TransactionDecisionService(
-            TransactionGlobalValidation validation,
-            FraudAlertFactory fraudAlertFactory
-    ) {
+    public TransactionDecisionService(TransactionGlobalValidation validation, CardPatternService cardPatternService,
+                                      FraudAlertFactory fraudAlertFactory, CardRepository cardRepository) {
         this.validation = validation;
+        this.cardPatternService = cardPatternService;
         this.fraudAlertFactory = fraudAlertFactory;
+        this.cardRepository = cardRepository;
     }
 
     /**
@@ -33,7 +35,8 @@ public class TransactionDecisionService {
             Transaction transaction,
             List<FraudAlert> alerts,
             int fraudScore
-    ) {}
+    ) {
+    }
 
     /**
      * Executa decisão antifraude:
@@ -41,34 +44,58 @@ public class TransactionDecisionService {
      * - Define flags
      * - Gera lista de alertas
      */
-    public ValidationResultDto evaluate(Transaction transaction) {
+    public ValidationResultDto evaluate(Transaction transaction, boolean successForce) {
 
         // 1️⃣ Executa todas as validações e coleta resultado único
         ValidationResultDto result = validation.validateAll(transaction);
 
-        // 2️⃣ Pega score e alertas diretamente (já vem em result)
+        // 2️⃣ Pega score e alertas diretamente
         int totalScore = result.getScore();
         List<AlertType> triggeredAlerts = result.getTriggeredAlerts();
 
         // 3️⃣ Define status da transação baseado no score
-        if (totalScore < 30) {
+        if (totalScore < 25) {
             transaction.setTransactionStatus(TransactionStatus.APPROVED);
             transaction.setFraud(false);
-        } else if (totalScore >= 70) {
+        } else if (totalScore >= 25 && totalScore < 60) {
+            transaction.setTransactionStatus(TransactionStatus.PENDING);
+            transaction.setFraud(false);
+        } else { // totalScore >= 60
             transaction.setTransactionStatus(TransactionStatus.NOT_APPROVED);
             transaction.setFraud(true);
         }
 
-        // 4️⃣ Cria um único FraudAlert com todos os alert types (opcional: salvar depois)
+        // 4️⃣ Override se for teste forçado
+        if (successForce) {
+            transaction.setTransactionStatus(TransactionStatus.APPROVED);
+        }
+
+        if (result.getTriggeredAlerts().contains(AlertType.CREDIT_LIMIT_REACHED)) {
+            transaction.setTransactionStatus(TransactionStatus.NOT_APPROVED);
+        }
+
+
+        // 5️⃣ Cria FraudAlert se houver alertas
         if (!triggeredAlerts.isEmpty()) {
             FraudAlert alert = fraudAlertFactory.create(transaction, triggeredAlerts, totalScore);
         }
 
-        // 5️⃣ Retorna ValidationResultDto consolidado
+        cardPatternService.buildOrUpdateCardPattern(transaction.getCard());
+
+        if (transaction.getTransactionStatus() == TransactionStatus.APPROVED) {
+            var card = transaction.getCard();
+
+            BigDecimal remaining = card.getRemainingLimit();
+            if (remaining == null) remaining = card.getCreditLimit() != null ? card.getCreditLimit() : BigDecimal.ZERO;
+
+            card.setRemainingLimit(remaining.subtract(transaction.getAmount()));
+
+
+             cardRepository.save(card);
+        }
+
+        // 6️⃣ Retorna ValidationResultDto consolidado
         return new ValidationResultDto(totalScore, triggeredAlerts);
+
     }
-
-
-
-
 }

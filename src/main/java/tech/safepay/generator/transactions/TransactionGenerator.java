@@ -161,7 +161,7 @@ public class TransactionGenerator {
      * @throws IllegalArgumentException se o cartão ou o device não existirem
      * @throws IllegalStateException se o device não estiver vinculado ao cartão
      */
-    public Transaction generateManualTransaction(ManualTransactionDto manualTransactionDto) {
+    public Transaction generateManualTransaction(ManualTransactionDto manualTransactionDto, boolean successForce) {
 
         // Recupera o cartão informado
         Card card = cardRepository.findById(manualTransactionDto.cardId())
@@ -205,6 +205,9 @@ public class TransactionGenerator {
 
         // Estado inicial da transação
         transaction.setTransactionStatus(TransactionStatus.PENDING);
+        if (successForce){
+            transaction.setTransactionStatus(TransactionStatus.APPROVED);
+        }
         transaction.setFraud(false);
 
         return transactionRepository.save(transaction);
