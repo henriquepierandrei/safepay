@@ -5,21 +5,12 @@ import tech.safepay.Enums.AlertType;
 import tech.safepay.dtos.validation.ValidationResultDto;
 import tech.safepay.entities.Card;
 import tech.safepay.entities.Transaction;
-import tech.safepay.repositories.TransactionRepository;
-
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.DoubleSummaryStatistics;
 import java.util.List;
 
 @Component
 public class ExternalAntifraudModelSimulation {
-
-    private final TransactionRepository transactionRepository;
-
-    public ExternalAntifraudModelSimulation(TransactionRepository transactionRepository) {
-        this.transactionRepository = transactionRepository;
-    }
 
     /**
      * ANOMALY_MODEL_TRIGGERED (30)
@@ -61,7 +52,7 @@ public class ExternalAntifraudModelSimulation {
      * - Retorna score fixo quando o "modelo externo" sinaliza risco
      * - Retorna 0 quando não há anomalia estatística
      */
-    public ValidationResultDto anomalyModelTriggered(Transaction transaction) {
+    public ValidationResultDto anomalyModelTriggered(Transaction transaction, TransactionGlobalValidation.ValidationSnapshot snapshot) {
 
         ValidationResultDto result = new ValidationResultDto();
 
@@ -71,10 +62,7 @@ public class ExternalAntifraudModelSimulation {
             return result;
         }
 
-        LocalDateTime windowStart = LocalDateTime.now().minusHours(24);
-
-        List<Transaction> history =
-                transactionRepository.findByCardAndCreatedAtAfter(card, windowStart);
+        List<Transaction> history = snapshot.last24Hours();
 
         if (history.size() < 10) return result;
 

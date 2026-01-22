@@ -9,37 +9,32 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 import tech.safepay.Enums.AlertType;
 import tech.safepay.dtos.validation.ValidationResultDto;
-import tech.safepay.entities.Card;
 import tech.safepay.entities.Device;
 import tech.safepay.entities.Transaction;
-import tech.safepay.repositories.TransactionRepository;
 
 import java.io.InputStream;
-import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
-import java.util.Optional;
+import java.util.Set;
 
 @Component
 public class NetworkAndDeviceValidation {
 
     private final ObjectMapper objectMapper;
-    private final TransactionRepository transactionRepository;
 
     /**
-     * Lista de blocos CIDR IPv6 associados a VPNs / proxies
+     * Set otimizado para lookup de VPN / TOR (IPv6 CIDR)
      */
-    private final List<IPAddress> vpnIpv6Cidrs = new ArrayList<>();
+    private final Set<IPAddress> vpnCidrs = new HashSet<>();
 
     public NetworkAndDeviceValidation(
-            ObjectMapper objectMapper,
-            TransactionRepository transactionRepository
+            ObjectMapper objectMapper
     ) {
         this.objectMapper = objectMapper;
-        this.transactionRepository = transactionRepository;
     }
 
     /* =====================================================
-       VPN / TOR BLACKLIST LOAD
+       VPN / TOR BLACKLIST LOAD (STARTUP)
        ===================================================== */
     @PostConstruct
     private void loadVpnBlacklist() {
@@ -55,7 +50,7 @@ public class NetworkAndDeviceValidation {
                     IPAddress address =
                             new IPAddressString(cidr.asText()).getAddress();
                     if (address != null) {
-                        vpnIpv6Cidrs.add(address);
+                        vpnCidrs.add(address);
                     }
                 }
             }
@@ -69,27 +64,18 @@ public class NetworkAndDeviceValidation {
     /* =====================================================
        SHARED RULE – SOURCE OF TRUTH
        ===================================================== */
-    private boolean isNewDevice(Transaction transaction) {
-        Device device = transaction.getDevice();
-        if (device == null) return true;
-
-        long totalTransactions =
-                transactionRepository.countByDevice(device);
-
-        // Se só existe a transação atual → device novo
-        return totalTransactions <= 1;
+    private boolean isNewDevice(Transaction transaction, TransactionGlobalValidation.ValidationSnapshot snapshot) {
+        List<Transaction> history = snapshot.last20();
+        return history == null || history.size() <= 1;
     }
-
-
-
 
     /* =====================================================
        NEW_DEVICE_DETECTED (15)
        ===================================================== */
-    public ValidationResultDto newDeviceDetected(Transaction transaction) {
+    public ValidationResultDto newDeviceDetected(Transaction transaction, TransactionGlobalValidation.ValidationSnapshot snapshot) {
         ValidationResultDto result = new ValidationResultDto();
 
-        if (isNewDevice(transaction)) {
+        if (isNewDevice(transaction, snapshot)) {
             result.addScore(AlertType.NEW_DEVICE_DETECTED.getScore());
             result.addAlert(AlertType.NEW_DEVICE_DETECTED);
         }
@@ -97,36 +83,42 @@ public class NetworkAndDeviceValidation {
         return result;
     }
 
-
-
     /* =====================================================
        DEVICE_FINGERPRINT_CHANGE (25)
        ===================================================== */
-    public ValidationResultDto deviceFingerprintChange(Transaction transaction) {
+    public ValidationResultDto deviceFingerprintChange(Transaction transaction, TransactionGlobalValidation.ValidationSnapshot snapshot) {
         ValidationResultDto result = new ValidationResultDto();
 
-        // Regra de ouro: device novo não gera fingerprint change
-        if (isNewDevice(transaction)) return result;
+        if (isNewDevice(transaction, snapshot)) return result;
 
-        transactionRepository
-                .findFirstByDeviceAndTransactionIdNotOrderByCreatedAtDesc(
-                        transaction.getDevice(),
-                        transaction.getTransactionId()
-                )
-                .ifPresent(prev -> {
-                    String prevFp = prev.getDeviceFingerprint();
-                    String currFp = transaction.getDeviceFingerprint();
+        List<Transaction> history = snapshot.last20();
+        if (history.size() < 2) return result;
 
-                    if (prevFp != null && currFp != null && !prevFp.equals(currFp)) {
-                        result.addScore(AlertType.DEVICE_FINGERPRINT_CHANGE.getScore());
-                        result.addAlert(AlertType.DEVICE_FINGERPRINT_CHANGE);
-                    }
-                });
+        // pega a transação mais recente antes da atual
+        Transaction previous = snapshot.last20().stream()
+                .filter(t -> !t.getTransactionId().equals(transaction.getTransactionId()))
+                .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt())) // do mais recente pro mais antigo
+                .findFirst()
+                .orElse(null);
 
+
+        if (previous == null) return result;
+
+
+
+        String prevFp = previous.getDeviceFingerprint();
+        String currFp = transaction.getDeviceFingerprint();
+
+        System.out.println(prevFp);
+        System.out.println(currFp);
+
+        if (prevFp != null && currFp != null && !prevFp.equals(currFp)) {
+            result.addScore(AlertType.DEVICE_FINGERPRINT_CHANGE.getScore());
+            result.addAlert(AlertType.DEVICE_FINGERPRINT_CHANGE);
+        }
 
         return result;
     }
-
 
 
     /* =====================================================
@@ -136,13 +128,13 @@ public class NetworkAndDeviceValidation {
         ValidationResultDto result = new ValidationResultDto();
 
         String ip = transaction.getIpAddress();
-        if (ip == null || vpnIpv6Cidrs.isEmpty()) return result;
+        if (ip == null || vpnCidrs.isEmpty()) return result;
 
         IPAddress address = new IPAddressString(ip).getAddress();
         if (address == null) return result;
 
-        boolean isVpn = vpnIpv6Cidrs.stream()
-                .anyMatch(cidr -> cidr.contains(address));
+        boolean isVpn =
+                vpnCidrs.stream().anyMatch(cidr -> cidr.contains(address));
 
         if (isVpn) {
             result.addScore(AlertType.TOR_OR_PROXY_DETECTED.getScore());

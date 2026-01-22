@@ -1,186 +1,193 @@
 package tech.safepay.validations;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import tech.safepay.dtos.validation.ValidationResultDto;
 import tech.safepay.entities.Transaction;
 
-/**
- * =========================
- * TRANSACTION GLOBAL VALIDATION
- * =========================
- *
- * Responsabilidade:
- * Orquestrar todas as validações antifraude e consolidar
- * os sinais individuais em um único score de risco.
- *
- * Modelo de decisão:
- * - Cada validação retorna um score ponderado
- * - O score final é a soma de todos os sinais disparados
- * - Nenhuma regra decide isoladamente (exceto casos extremos)
- *
- * Observação importante:
- * Este componente NÃO decide aprovação ou negação.
- * Ele apenas produz um risco agregado para consumo
- * por camadas superiores (policy engine / decision engine).
- */
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
+
 @Component
 public class TransactionGlobalValidation {
+
+    private static final Logger log = LoggerFactory.getLogger(TransactionGlobalValidation.class);
 
     private final ExternalAntifraudModelSimulation externalAntifraudModelSimulation;
     private final FraudPatternsValidation fraudPatternsValidation;
     private final FrequencyAndVelocityValidation frequencyAndVelocityValidation;
     private final LimitAndAmountValidation limitAndAmountValidation;
-    private final LocalizationValidation localizationValidation;
+    private final LocationValidation locationValidation;
     private final NetworkAndDeviceValidation networkAndDeviceValidation;
     private final OperationalRiskValidation operationalRiskValidation;
     private final UserBehaviorValidation userBehaviorValidation;
     private final LimitAndExpirationValidation limitAndExpirationValidation;
 
+    private final ValidationContext context;
+    private final Executor validationExecutor;
+
     public TransactionGlobalValidation(
+            ValidationContext context,
             ExternalAntifraudModelSimulation externalAntifraudModelSimulation,
             FraudPatternsValidation fraudPatternsValidation,
             FrequencyAndVelocityValidation frequencyAndVelocityValidation,
             LimitAndAmountValidation limitAndAmountValidation,
-            LocalizationValidation localizationValidation,
+            LocationValidation locationValidation,
             NetworkAndDeviceValidation networkAndDeviceValidation,
             OperationalRiskValidation operationalRiskValidation,
             UserBehaviorValidation userBehaviorValidation,
-            LimitAndExpirationValidation limitAndExpirationValidation
+            LimitAndExpirationValidation limitAndExpirationValidation,
+            @Qualifier("validationExecutor") Executor validationExecutor
     ) {
+        this.context = context;
         this.externalAntifraudModelSimulation = externalAntifraudModelSimulation;
         this.fraudPatternsValidation = fraudPatternsValidation;
         this.frequencyAndVelocityValidation = frequencyAndVelocityValidation;
         this.limitAndAmountValidation = limitAndAmountValidation;
-        this.localizationValidation = localizationValidation;
+        this.locationValidation = locationValidation;
         this.networkAndDeviceValidation = networkAndDeviceValidation;
         this.operationalRiskValidation = operationalRiskValidation;
         this.userBehaviorValidation = userBehaviorValidation;
         this.limitAndExpirationValidation = limitAndExpirationValidation;
+        this.validationExecutor = validationExecutor;
     }
 
-    /**
-     * Executa todas as validações antifraude e retorna
-     * o score agregado da transação.
-     * <p>
-     * Fluxo:
-     * 1. Modelo externo (simulado) de anomalia
-     * 2. Padrões clássicos de fraude
-     * 3. Frequência e velocidade
-     * 4. Valor e limite
-     * 5. Localização geográfica
-     * 6. Dispositivo e rede
-     * 7. Risco operacional
-     * 8. Comportamento do usuário
-     * <p>
-     * Retorno:
-     * - Inteiro representando o risco total da transação
-     */
+    // 📦 Snapshot IMUTÁVEL (async-safe)
+    public record ValidationSnapshot(
+            List<Transaction> last20,
+            List<Transaction> last10,
+            List<Transaction> last24Hours,
+            List<Transaction> last10Minutes,
+            List<Transaction> last5Minutes
+    ) {}
+
+
     public ValidationResultDto validateAll(Transaction transaction) {
+
+        // 1️⃣ Carrega contexto NA THREAD HTTP
+        context.loadContext(transaction);
+
+        ValidationSnapshot snapshot = new ValidationSnapshot(
+                context.getLast20Transactions(),
+                context.getLast10Transactions(),
+                context.getLast24Hours(),
+                context.getLast10Minutes(),
+                context.getLast5Minutes()
+        );
 
         ValidationResultDto finalResult = new ValidationResultDto();
 
-        // =========================
-        // MODELO EXTERNO (SIMULADO)
-        // =========================
-        ValidationResultDto external = externalAntifraudModelSimulation.anomalyModelTriggered(transaction);
-        finalResult.addScore(external.getScore());
-        external.getTriggeredAlerts().forEach(finalResult::addAlert);
+        // 2️⃣ Execução paralela (SEM RequestScope)
+        List<CompletableFuture<ValidationResultDto>> futures = List.of(
 
-        // =========================
-        // PADRÕES CLÁSSICOS DE FRAUDE
-        // =========================
-        ValidationResultDto cardTesting = fraudPatternsValidation.cardTestingPattern(transaction);
-        finalResult.addScore(cardTesting.getScore());
-        cardTesting.getTriggeredAlerts().forEach(finalResult::addAlert);
+                CompletableFuture.supplyAsync(
+                        () -> externalAntifraudModelSimulation.anomalyModelTriggered(transaction, snapshot),
+                        validationExecutor
+                ),
 
-        ValidationResultDto microTxn = fraudPatternsValidation.microTransactionPattern(transaction);
-        finalResult.addScore(microTxn.getScore());
-        microTxn.getTriggeredAlerts().forEach(finalResult::addAlert);
+                CompletableFuture.supplyAsync(
+                        () -> fraudPatternsValidation.cardTestingPattern(transaction, snapshot),
+                        validationExecutor
+                ),
 
-        ValidationResultDto declineThenApprove = fraudPatternsValidation.declineThenApprovePattern(transaction);
-        finalResult.addScore(declineThenApprove.getScore());
-        declineThenApprove.getTriggeredAlerts().forEach(finalResult::addAlert);
+                CompletableFuture.supplyAsync(
+                        () -> fraudPatternsValidation.microTransactionPattern(transaction, snapshot),
+                        validationExecutor
+                ),
 
-        // =========================
-        // FREQUÊNCIA & VELOCIDADE
-        // =========================
-        ValidationResultDto velocity = frequencyAndVelocityValidation.velocityAbuseValidation(transaction);
-        finalResult.addScore(velocity.getScore());
-        velocity.getTriggeredAlerts().forEach(finalResult::addAlert);
+                CompletableFuture.supplyAsync(
+                        () -> frequencyAndVelocityValidation.velocityAbuseValidation(transaction, snapshot),
+                        validationExecutor
+                ),
 
-        ValidationResultDto burst = frequencyAndVelocityValidation.burstActivityValidation(transaction);
-        finalResult.addScore(burst.getScore());
-        burst.getTriggeredAlerts().forEach(finalResult::addAlert);
+                CompletableFuture.supplyAsync(
+                        () -> frequencyAndVelocityValidation.burstActivityValidation(transaction, snapshot),
+                        validationExecutor
+                ),
 
-        // =========================
-        // VALOR & LIMITE
-        // =========================
-        ValidationResultDto highAmount = limitAndAmountValidation.highAmountValidation(transaction);
-        finalResult.addScore(highAmount.getScore());
-        highAmount.getTriggeredAlerts().forEach(finalResult::addAlert);
+                CompletableFuture.supplyAsync(
+                        () -> fraudPatternsValidation.declineThenApprovePattern(transaction, snapshot),
+                        validationExecutor
+                ),
 
-        ValidationResultDto limitExceeded = limitAndAmountValidation.limitExceededValidation(transaction);
-        finalResult.addScore(limitExceeded.getScore());
-        limitExceeded.getTriggeredAlerts().forEach(finalResult::addAlert);
+                CompletableFuture.supplyAsync(
+                        () -> limitAndAmountValidation.highAmountValidation(transaction, snapshot),
+                        validationExecutor
+                ),
 
-        // =========================
-        // LOCALIZAÇÃO
-        // =========================
-        ValidationResultDto impossibleTravel = localizationValidation.impossibleTravelValidation(transaction);
-        finalResult.addScore(impossibleTravel.getScore());
-        impossibleTravel.getTriggeredAlerts().forEach(finalResult::addAlert);
+                CompletableFuture.supplyAsync(
+                        () -> limitAndAmountValidation.limitExceededValidation(transaction, snapshot),
+                        validationExecutor
+                ),
 
-        ValidationResultDto locationAnomaly = localizationValidation.locationAnomalyValidation(transaction);
-        finalResult.addScore(locationAnomaly.getScore());
-        locationAnomaly.getTriggeredAlerts().forEach(finalResult::addAlert);
+                CompletableFuture.supplyAsync(
+                        () -> locationValidation.impossibleTravelValidation(transaction, snapshot),
+                        validationExecutor
+                ),
 
-        ValidationResultDto highRiskCountry = localizationValidation.highRiskCountryValidation(transaction);
-        finalResult.addScore(highRiskCountry.getScore());
-        highRiskCountry.getTriggeredAlerts().forEach(finalResult::addAlert);
+                CompletableFuture.supplyAsync(
+                        () -> locationValidation.highRiskCountryValidation(transaction),
+                        validationExecutor
+                ),
 
-        // =========================
-        // DISPOSITIVO & REDE
-        // =========================
-        ValidationResultDto fingerprintChange = networkAndDeviceValidation.deviceFingerprintChange(transaction);
-        finalResult.addScore(fingerprintChange.getScore());
-        fingerprintChange.getTriggeredAlerts().forEach(finalResult::addAlert);
+                CompletableFuture.supplyAsync(
+                        () -> locationValidation.locationAnomalyValidation(transaction, snapshot),
+                        validationExecutor
+                ),
 
-        ValidationResultDto newDevice = networkAndDeviceValidation.newDeviceDetected(transaction);
-        finalResult.addScore(newDevice.getScore());
-        newDevice.getTriggeredAlerts().forEach(finalResult::addAlert);
+                CompletableFuture.supplyAsync(
+                        () -> networkAndDeviceValidation.newDeviceDetected(transaction, snapshot),
+                        validationExecutor
+                ),
 
-        ValidationResultDto multipleCards = networkAndDeviceValidation.multipleCardsSameDevice(transaction);
-        finalResult.addScore(multipleCards.getScore());
-        multipleCards.getTriggeredAlerts().forEach(finalResult::addAlert);
+                CompletableFuture.supplyAsync(
+                        () -> networkAndDeviceValidation.deviceFingerprintChange(transaction, snapshot),
+                        validationExecutor
+                ),
 
-        ValidationResultDto torProxy = networkAndDeviceValidation.torOrProxyDetected(transaction);
-        finalResult.addScore(torProxy.getScore());
-        torProxy.getTriggeredAlerts().forEach(finalResult::addAlert);
+                CompletableFuture.supplyAsync(
+                        () -> networkAndDeviceValidation.torOrProxyDetected(transaction),
+                        validationExecutor
+                ),
+                CompletableFuture.supplyAsync(
+                        () -> networkAndDeviceValidation.multipleCardsSameDevice(transaction),
+                        validationExecutor
+                ),
 
-        // =========================
-        // RISCO OPERACIONAL
-        // =========================
-        ValidationResultDto failedAttempts = operationalRiskValidation.multipleFailedAttempts(transaction);
-        finalResult.addScore(failedAttempts.getScore());
-        failedAttempts.getTriggeredAlerts().forEach(finalResult::addAlert);
+                CompletableFuture.supplyAsync(
+                        () -> operationalRiskValidation.multipleFailedAttempts(transaction, snapshot),
+                        validationExecutor
+                ),
 
-        ValidationResultDto suspiciousSuccess = operationalRiskValidation.suspiciousSuccessAfterFailure(transaction);
-        finalResult.addScore(suspiciousSuccess.getScore());
-        suspiciousSuccess.getTriggeredAlerts().forEach(finalResult::addAlert);
+                CompletableFuture.supplyAsync(
+                        () -> operationalRiskValidation.suspiciousSuccessAfterFailure(transaction, snapshot),
+                        validationExecutor
+                ),
 
-        // =========================
-        // COMPORTAMENTO DO USUÁRIO
-        // =========================
-        ValidationResultDto timeOfDay = userBehaviorValidation.timeOfDayAnomaly(transaction);
-        finalResult.addScore(timeOfDay.getScore());
-        timeOfDay.getTriggeredAlerts().forEach(finalResult::addAlert);
+                CompletableFuture.supplyAsync(
+                        () -> userBehaviorValidation.timeOfDayAnomaly(transaction, snapshot),
+                        validationExecutor
+                ),
 
-        // =========================
-        // LIMITE & EXPIRAÇÃO
-        // =========================
-        ValidationResultDto limitAndCreditReached = limitAndExpirationValidation.validate(transaction);
-        finalResult.addScore(limitAndCreditReached.getScore());
-        limitAndCreditReached.getTriggeredAlerts().forEach(finalResult::addAlert);
+                CompletableFuture.supplyAsync(
+                        () -> limitAndExpirationValidation.validate(transaction),
+                        validationExecutor
+                )
+        );
+
+        // 3️⃣ Aguarda tudo
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+
+        // 4️⃣ Consolidação
+        futures.stream()
+                .map(CompletableFuture::join)
+                .forEach(r -> {
+                    finalResult.addScore(r.getScore());
+                    r.getTriggeredAlerts().forEach(finalResult::addAlert);
+                });
 
         return finalResult;
     }

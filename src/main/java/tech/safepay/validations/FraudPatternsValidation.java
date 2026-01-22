@@ -7,20 +7,11 @@ import tech.safepay.dtos.validation.ValidationResultDto;
 import tech.safepay.entities.Card;
 import tech.safepay.entities.Transaction;
 import tech.safepay.repositories.TransactionRepository;
-
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Component
 public class FraudPatternsValidation {
-
-    private final TransactionRepository transactionRepository;
-
-    public FraudPatternsValidation(TransactionRepository transactionRepository) {
-        this.transactionRepository = transactionRepository;
-    }
-
     /**
      * =========================
      * CARD_TESTING (50)
@@ -45,16 +36,13 @@ public class FraudPatternsValidation {
      * - Altíssimo valor preditivo
      * - Normalmente combinado com velocity e device signals
      */
-    public ValidationResultDto cardTestingPattern(Transaction transaction) {
+    public ValidationResultDto cardTestingPattern(Transaction transaction,TransactionGlobalValidation.ValidationSnapshot snapshot) {
         ValidationResultDto result = new ValidationResultDto();
 
         Card card = transaction.getCard();
         if (card == null) return result;
 
-        LocalDateTime windowStart = LocalDateTime.now().minusMinutes(10);
-
-        List<Transaction> recentTransactions =
-                transactionRepository.findByCardAndCreatedAtAfter(card, windowStart);
+        List<Transaction> recentTransactions = snapshot.last10Minutes();
 
         long veryLowValueCount = recentTransactions.stream()
                 .filter(t -> t.getAmount().compareTo(BigDecimal.valueOf(2)) <= 0)
@@ -98,14 +86,13 @@ public class FraudPatternsValidation {
      * Observações:
      * - Sinal forte, mas abaixo de card testing puro
      */
-    public ValidationResultDto microTransactionPattern(Transaction transaction) {
+    public ValidationResultDto microTransactionPattern(Transaction transaction,  TransactionGlobalValidation.ValidationSnapshot snapshot) {
         ValidationResultDto result = new ValidationResultDto();
 
         Card card = transaction.getCard();
         if (card == null) return result;
 
-        List<Transaction> lastTransactions =
-                transactionRepository.findTop20ByCardOrderByCreatedAtDesc(card);
+        List<Transaction> lastTransactions = snapshot.last20();
 
         if (lastTransactions.size() < 5) return result;
 
@@ -148,7 +135,7 @@ public class FraudPatternsValidation {
      * - Muito comum em ataques automatizados
      * - Forte quando combinado com device ou IP suspeito
      */
-    public ValidationResultDto declineThenApprovePattern(Transaction transaction) {
+    public ValidationResultDto declineThenApprovePattern(Transaction transaction, TransactionGlobalValidation.ValidationSnapshot snapshot) {
         ValidationResultDto result = new ValidationResultDto();
 
         Card card = transaction.getCard();
@@ -156,8 +143,8 @@ public class FraudPatternsValidation {
             return result;
         }
 
-        List<Transaction> lastTransactions =
-                transactionRepository.findTop10ByCardOrderByCreatedAtDesc(card);
+        List<Transaction> lastTransactions = snapshot.last10();
+
 
         if (lastTransactions.size() < 4) return result;
 

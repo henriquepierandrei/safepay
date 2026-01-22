@@ -3,60 +3,50 @@ package tech.safepay.validations;
 import org.springframework.stereotype.Component;
 import tech.safepay.Enums.AlertType;
 import tech.safepay.dtos.validation.ValidationResultDto;
-import tech.safepay.entities.Card;
 import tech.safepay.entities.Transaction;
-import tech.safepay.repositories.TransactionRepository;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Component
 public class UserBehaviorValidation {
-
-    private final TransactionRepository transactionRepository;
-
-    public UserBehaviorValidation(TransactionRepository transactionRepository) {
-        this.transactionRepository = transactionRepository;
-    }
-
     /**
      * TIME_OF_DAY_ANOMALY
      *
      * Objetivo:
      * Detectar transações realizadas em horários atípicos
-     * quando comparadas ao comportamento histórico do cartão.
+     * comparadas ao comportamento histórico recente.
+     *
+     * Estratégia:
+     * - Usa histórico já carregado no ValidationContext
+     * - Baseado nas últimas transações (proxy de 30 dias)
      *
      * Peso baixo (10):
-     * - Não bloqueia sozinho
-     * - Serve como reforço para outros sinais (velocity, location, device)
+     * - Sinal complementar
+     * - Nunca decide sozinho
      */
-    public ValidationResultDto timeOfDayAnomaly(Transaction transaction) {
+    public ValidationResultDto timeOfDayAnomaly(Transaction transaction, TransactionGlobalValidation.ValidationSnapshot snapshot) {
         ValidationResultDto result = new ValidationResultDto();
 
-        Card card = transaction.getCard();
-        if (card == null) return result;
+        if (transaction == null || transaction.getCreatedAt() == null) {
+            return result;
+        }
 
-        // 1. Define o baseline: últimos 30 dias
-        LocalDateTime baselineStart = LocalDateTime.now().minusDays(30);
-        List<Transaction> historicalTransactions =
-                transactionRepository.findByCardAndCreatedAtAfter(card, baselineStart);
+        List<Transaction> historicalTransactions = snapshot.last20();
 
         // Histórico insuficiente → risco neutro
         if (historicalTransactions.size() < 10) return result;
 
-        // 2. Calcula a média do horário das transações (em horas)
+        // Média do horário histórico
         double averageHour = historicalTransactions.stream()
+                .filter(t -> t.getCreatedAt() != null)
                 .mapToInt(t -> t.getCreatedAt().getHour())
                 .average()
                 .orElse(transaction.getCreatedAt().getHour());
 
-        // 3. Horário da transação atual
         int currentHour = transaction.getCreatedAt().getHour();
 
-        // 4. Define tolerância (desvio aceitável)
         int allowedDeviation = 4; // horas
 
-        // 5. Verifica anomalia
         if (Math.abs(currentHour - averageHour) > allowedDeviation) {
             result.addScore(AlertType.TIME_OF_DAY_ANOMALY.getScore());
             result.addAlert(AlertType.TIME_OF_DAY_ANOMALY);

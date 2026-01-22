@@ -13,25 +13,11 @@ import java.util.List;
 
 @Component
 public class LimitAndAmountValidation {
-
     private static final int SCALE = 2;
 
     // Multiplicador para considerar valor “significativamente acima da média”
     private static final BigDecimal HIGH_AMOUNT_MULTIPLIER = BigDecimal.valueOf(1.5);
 
-    private final TransactionRepository transactionRepository;
-
-    public LimitAndAmountValidation(TransactionRepository transactionRepository) {
-        this.transactionRepository = transactionRepository;
-    }
-
-    /**
-     * Recupera o histórico recente de transações do cartão.
-     * Limitar o volume evita ruído e melhora performance.
-     */
-    private List<Transaction> getLastTransactions(Card card) {
-        return transactionRepository.findTop20ByCardOrderByCreatedAtDesc(card);
-    }
 
     /**
      * Calcula a média de valores das transações históricas.
@@ -81,11 +67,11 @@ public class LimitAndAmountValidation {
      * Atua como sinal de reforço no score global.
      */
 
-    public ValidationResultDto highAmountValidation(Transaction transaction) {
+    public ValidationResultDto highAmountValidation(Transaction transaction, TransactionGlobalValidation.ValidationSnapshot snapshot) {
         ValidationResultDto result = new ValidationResultDto();
 
         Card card = transaction.getCard();
-        List<Transaction> transactions = getLastTransactions(card);
+        List<Transaction> transactions = snapshot.last20();
 
         if (transactions.size() < 5) return result;
 
@@ -126,11 +112,11 @@ public class LimitAndAmountValidation {
      * Pode acionar bloqueios ou revisões adicionais.
      */
 
-    public ValidationResultDto limitExceededValidation(Transaction transaction) {
+    public ValidationResultDto limitExceededValidation(Transaction transaction, TransactionGlobalValidation.ValidationSnapshot snapshot) {
         ValidationResultDto result = new ValidationResultDto();
 
         Card card = transaction.getCard();
-        List<Transaction> transactions = getLastTransactions(card);
+        List<Transaction> transactions = snapshot.last20();
 
         BigDecimal usedLimit = transactions.stream()
                 .map(Transaction::getAmount)

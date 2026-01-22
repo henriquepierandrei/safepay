@@ -3,9 +3,7 @@ package tech.safepay.services;
 import jakarta.annotation.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import tech.safepay.Enums.AlertType;
-import tech.safepay.Enums.DeviceType;
-import tech.safepay.Enums.TransactionStatus;
+import tech.safepay.Enums.Severity;
 import tech.safepay.dtos.device.DeviceListResponseDto;
 import tech.safepay.dtos.transaction.ManualTransactionDto;
 import tech.safepay.dtos.transaction.ResolvedLocalizationDto;
@@ -17,7 +15,6 @@ import tech.safepay.generator.transactions.TransactionGenerator;
 import tech.safepay.repositories.FraudAlertRepository;
 import tech.safepay.repositories.TransactionRepository;
 
-import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -29,7 +26,13 @@ public class TransactionPipelineService {
     private final FraudAlertRepository fraudAlertRepository;
     private final FraudAlertFactory fraudAlertFactory;
 
-    public TransactionPipelineService(TransactionGenerator transactionGenerator, TransactionDecisionService decisionService, TransactionRepository transactionRepository, FraudAlertRepository fraudAlertRepository, FraudAlertFactory fraudAlertFactory) {
+    public TransactionPipelineService(
+            TransactionGenerator transactionGenerator,
+            TransactionDecisionService decisionService,
+            TransactionRepository transactionRepository,
+            FraudAlertRepository fraudAlertRepository,
+            FraudAlertFactory fraudAlertFactory
+    ) {
         this.transactionGenerator = transactionGenerator;
         this.decisionService = decisionService;
         this.transactionRepository = transactionRepository;
@@ -38,19 +41,24 @@ public class TransactionPipelineService {
     }
 
     /**
-     * Pipeline completo:
+     * PIPELINE COMPLETO DE TRANSAÇÃO
+     *
      * 1. Gera transação
      * 2. Executa antifraude
-     * 3. Persiste decisão
-     * 4. Persiste alertas
+     * 3. Persiste transação
+     * 4. Cria (opcionalmente) FraudAlert
      * 5. Retorna DTO seguro
      */
     @Transactional
-    public TransactionResponseDto process(boolean isManual,
-                                          boolean successForce,
-                                          @Nullable ManualTransactionDto manualTransactionDto
+    public TransactionResponseDto process(
+            boolean isManual,
+            boolean successForce,
+            @Nullable ManualTransactionDto manualTransactionDto
     ) {
 
+        // =========================
+        // 1️⃣ GERA TRANSAÇÃO
+        // =========================
         Transaction transaction;
 
         if (isManual) {
@@ -59,20 +67,31 @@ public class TransactionPipelineService {
                         "ManualTransactionDto must be provided for manual processing"
                 );
             }
-            transaction = transactionGenerator.generateManualTransaction(manualTransactionDto, successForce);
+            transaction = transactionGenerator.generateManualTransaction(
+                    manualTransactionDto,
+                    successForce
+            );
         } else {
             transaction = transactionGenerator.generateNormalTransaction();
         }
 
+        // =========================
+        // 2️⃣ AVALIA ANTIFRAUDE
+        // =========================
+        ValidationResultDto validationResult =
+                decisionService.evaluate(transaction, successForce);
 
-        // 2️⃣ Avaliação antifraude (retorna ValidationResultDto)
-        ValidationResultDto validationResult = decisionService.evaluate(transaction,  successForce);
-
-        // 3️⃣ Define status da transação já dentro do evaluate
+        // =========================
+        // 3️⃣ PERSISTE TRANSAÇÃO
+        // =========================
         transactionRepository.save(transaction);
 
-        // 4️⃣ Criação de um único FraudAlert com todos os alert types
+        // =========================
+        // 4️⃣ CRIA ALERTA (SE NECESSÁRIO)
+        // =========================
         FraudAlert alert = null;
+        Severity severity = Severity.LOW;
+
         if (!validationResult.getTriggeredAlerts().isEmpty()) {
             alert = fraudAlertFactory.create(
                     transaction,
@@ -80,9 +99,12 @@ public class TransactionPipelineService {
                     validationResult.getScore()
             );
             fraudAlertRepository.save(alert);
+            severity = alert.getSeverity();
         }
 
-        // 5️⃣ Retorno DTO para API
+        // =========================
+        // 5️⃣ RETORNO DTO
+        // =========================
         return new TransactionResponseDto(
                 null,
                 transaction.getMerchantCategory(),
@@ -93,10 +115,10 @@ public class TransactionPipelineService {
                 new ResolvedLocalizationDto(
                         transaction.getCountryCode(),
                         transaction.getState(),
-                        transaction.getCity()),
-
+                        transaction.getCity()
+                ),
                 validationResult,
-                alert.getSeverity(),
+                severity,
                 new DeviceListResponseDto.DeviceDto(
                         transaction.getDevice().getId(),
                         transaction.getDevice().getFingerPrintId(),
@@ -108,9 +130,6 @@ public class TransactionPipelineService {
                 transaction.getTransactionStatus(),
                 transaction.getFraud(),
                 transaction.getCreatedAt()
-
         );
     }
-
-
 }

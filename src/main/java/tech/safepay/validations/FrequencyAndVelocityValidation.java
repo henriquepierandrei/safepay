@@ -5,19 +5,11 @@ import tech.safepay.Enums.AlertType;
 import tech.safepay.dtos.validation.ValidationResultDto;
 import tech.safepay.entities.Card;
 import tech.safepay.entities.Transaction;
-import tech.safepay.repositories.TransactionRepository;
-
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Component
 public class FrequencyAndVelocityValidation {
 
-    private final TransactionRepository transactionRepository;
-
-    public FrequencyAndVelocityValidation(TransactionRepository transactionRepository) {
-        this.transactionRepository = transactionRepository;
-    }
 
     /**
      * =========================
@@ -36,17 +28,15 @@ public class FrequencyAndVelocityValidation {
      * Peso: 35
      * Sinal forte, frequentemente associado a fraude real.
      */
-    public ValidationResultDto velocityAbuseValidation(Transaction transaction) {
+    public ValidationResultDto velocityAbuseValidation(Transaction transaction, TransactionGlobalValidation.ValidationSnapshot snapshot) {
         ValidationResultDto result = new ValidationResultDto();
 
         Card card = transaction.getCard();
         if (card == null) return result;
 
         // Janela de observação (últimos 5 minutos)
-        LocalDateTime windowStart = LocalDateTime.now().minusMinutes(5);
+        List<Transaction> recentTransactions = snapshot.last5Minutes();
 
-        List<Transaction> recentTransactions =
-                transactionRepository.findByCardAndCreatedAtAfter(card, windowStart);
 
         int maxAllowed = 3;
 
@@ -76,33 +66,28 @@ public class FrequencyAndVelocityValidation {
      * Peso: 25
      * Atua como reforço para VELOCITY_ABUSE.
      */
-    public ValidationResultDto burstActivityValidation(Transaction transaction) {
+    public ValidationResultDto burstActivityValidation(Transaction transaction, TransactionGlobalValidation.ValidationSnapshot snapshot) {
         ValidationResultDto result = new ValidationResultDto();
 
         Card card = transaction.getCard();
         if (card == null) return result;
 
         // Baseline histórico (últimas 24 horas)
-        LocalDateTime baselineStart = LocalDateTime.now().minusHours(24);
 
-        List<Transaction> baselineTransactions =
-                transactionRepository.findByCardAndCreatedAtAfter(card, baselineStart);
+        List<Transaction> baselineTransactions = snapshot.last24Hours();
 
         if (baselineTransactions.size() < 5) return result;
 
         // Média histórica de transações por hora
         double avgPerHour = baselineTransactions.size() / 24.0;
 
-        // Janela curta para detectar pico (últimos 5 minutos)
-        LocalDateTime burstWindowStart = LocalDateTime.now().minusMinutes(5);
-
-        int burstCount =
-                transactionRepository.findByCardAndCreatedAtAfter(card, burstWindowStart).size();
+        int burstCount = snapshot.last5Minutes().size();
 
         if (burstCount > avgPerHour * 3) {
             result.addScore(AlertType.BURST_ACTIVITY.getScore());
             result.addAlert(AlertType.BURST_ACTIVITY);
         }
+
 
         return result;
     }
