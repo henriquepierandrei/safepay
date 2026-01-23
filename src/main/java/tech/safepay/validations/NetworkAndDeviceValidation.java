@@ -64,10 +64,16 @@ public class NetworkAndDeviceValidation {
     /* =====================================================
        SHARED RULE – SOURCE OF TRUTH
        ===================================================== */
-    private boolean isNewDevice(Transaction transaction, TransactionGlobalValidation.ValidationSnapshot snapshot) {
-        List<Transaction> history = snapshot.last20();
-        return history == null || history.size() <= 1;
+    private boolean isNewDevice(
+            Transaction transaction,
+            TransactionGlobalValidation.ValidationSnapshot snapshot
+    ) {
+        return snapshot.last20().stream()
+                .noneMatch(t ->
+                        !t.getTransactionId().equals(transaction.getTransactionId())
+                );
     }
+
 
     /* =====================================================
        NEW_DEVICE_DETECTED (15)

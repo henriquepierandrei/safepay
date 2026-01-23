@@ -6,6 +6,7 @@ import tech.safepay.dtos.validation.ValidationResultDto;
 import tech.safepay.entities.Transaction;
 
 import java.time.Duration;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 
@@ -56,23 +57,25 @@ public class LocationValidation {
      * LOCATION_ANOMALY
      * =========================
      */
-    public ValidationResultDto locationAnomalyValidation(Transaction transaction, TransactionGlobalValidation.ValidationSnapshot snapshot) {
+    public ValidationResultDto locationAnomalyValidation(
+            Transaction transaction,
+            TransactionGlobalValidation.ValidationSnapshot snapshot
+    ) {
         ValidationResultDto result = new ValidationResultDto();
 
         List<Transaction> history = snapshot.last20();
-        if (history == null || history.size() < 5) return result;
+        if (history == null || history.size() < 2) return result;
 
-        double avgLat = history.stream()
-                .mapToDouble(t -> Double.parseDouble(t.getLatitude()))
-                .average().orElse(0);
+        Transaction reference = history.stream()
+                .filter(t -> t.getCreatedAt().isBefore(transaction.getCreatedAt()))
+                .max(Comparator.comparing(Transaction::getCreatedAt))
+                .orElse(null);
 
-        double avgLon = history.stream()
-                .mapToDouble(t -> Double.parseDouble(t.getLongitude()))
-                .average().orElse(0);
+        if (reference == null) return result;
 
         double distanceKm = haversineDistance(
-                avgLat,
-                avgLon,
+                Double.parseDouble(reference.getLatitude()),
+                Double.parseDouble(reference.getLongitude()),
                 Double.parseDouble(transaction.getLatitude()),
                 Double.parseDouble(transaction.getLongitude())
         );
@@ -85,6 +88,7 @@ public class LocationValidation {
         return result;
     }
 
+
     /**
      * =========================
      * IMPOSSIBLE_TRAVEL
@@ -96,8 +100,14 @@ public class LocationValidation {
         List<Transaction> history = snapshot.last20();
         if (history == null || history.size() < 2) return result;
 
-        // index 0 = atual, index 1 = última anterior
-        Transaction previous = history.get(1);
+        // previous = última transação já registrada
+        Transaction previous = history.stream()
+                .filter(t -> t.getCreatedAt().isBefore(transaction.getCreatedAt()))
+                .max(Comparator.comparing(Transaction::getCreatedAt))
+                .orElse(null);
+
+        if (previous == null) return result;
+
 
         double distanceKm = haversineDistance(
                 Double.parseDouble(previous.getLatitude()),
@@ -106,17 +116,19 @@ public class LocationValidation {
                 Double.parseDouble(transaction.getLongitude())
         );
 
-        long minutesDiff =
-                Duration.between(previous.getCreatedAt(), transaction.getCreatedAt()).toMinutes();
+        long secondsDiff =
+                Duration.between(previous.getCreatedAt(), transaction.getCreatedAt()).getSeconds();
 
-        if (minutesDiff <= 0) return result;
+        if (secondsDiff <= 0) return result;
 
-        double requiredSpeed = (distanceKm / minutesDiff) * 60;
+        double hours = secondsDiff / 3600.0;
+        double requiredSpeed = distanceKm / hours;
 
-        if (requiredSpeed > 900) {
+        if (distanceKm > 1000 && hours < 1) {
             result.addScore(AlertType.IMPOSSIBLE_TRAVEL.getScore());
             result.addAlert(AlertType.IMPOSSIBLE_TRAVEL);
         }
+
 
         return result;
     }

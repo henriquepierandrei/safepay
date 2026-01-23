@@ -1,6 +1,8 @@
 package tech.safepay.validations;
 
+import org.springframework.context.annotation.ScopedProxyMode;
 import org.springframework.stereotype.Component;
+import org.springframework.web.context.annotation.RequestScope;
 import tech.safepay.entities.Card;
 import tech.safepay.entities.Transaction;
 import tech.safepay.repositories.TransactionRepository;
@@ -9,7 +11,7 @@ import java.util.Collections;
 import java.util.List;
 
 @Component
-//@RequestScope(proxyMode = ScopedProxyMode.TARGET_CLASS)
+@RequestScope(proxyMode = ScopedProxyMode.TARGET_CLASS)     // NÃO REMOVER, SE REMOVER O ALGORITMO DE VALIDAÇÃO QUEBRA!
 public class ValidationContext {
 
     private final TransactionRepository transactionRepository;

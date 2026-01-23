@@ -62,39 +62,31 @@ public class ExternalAntifraudModelSimulation {
             return result;
         }
 
-        List<Transaction> history = snapshot.last24Hours();
+        List<Transaction> history = snapshot.last20().stream()
+                .filter(t -> !t.getTransactionId().equals(transaction.getTransactionId()))
+                .toList();
 
         if (history.size() < 10) return result;
 
-        DoubleSummaryStatistics stats =
-                history.stream()
-                        .map(Transaction::getAmount)
-                        .map(BigDecimal::doubleValue)
-                        .mapToDouble(Double::doubleValue)
-                        .summaryStatistics();
+        double avg = history.stream()
+                .map(Transaction::getAmount)
+                .mapToDouble(BigDecimal::doubleValue)
+                .average()
+                .orElse(0);
 
-        double average = stats.getAverage();
+        double variance = history.stream()
+                .map(Transaction::getAmount)
+                .mapToDouble(v -> Math.pow(v.doubleValue() - avg, 2))
+                .average()
+                .orElse(0);
 
-        double variance =
-                history.stream()
-                        .map(Transaction::getAmount)
-                        .map(BigDecimal::doubleValue)
-                        .mapToDouble(v -> Math.pow(v - average, 2))
-                        .average()
-                        .orElse(0);
+        double std = Math.sqrt(variance);
 
-        double standardDeviation = Math.sqrt(variance);
-
-        if (standardDeviation == 0) return result;
-
-        double currentAmount = transaction.getAmount().doubleValue();
-
-        boolean isAnomalous = Math.abs(currentAmount - average) > (3 * standardDeviation);
-
-        if (isAnomalous) {
+        if (std > 0 && Math.abs(transaction.getAmount().doubleValue() - avg) > 2.5 * std) {
             result.addScore(AlertType.ANOMALY_MODEL_TRIGGERED.getScore());
             result.addAlert(AlertType.ANOMALY_MODEL_TRIGGERED);
         }
+
 
         return result;
     }
