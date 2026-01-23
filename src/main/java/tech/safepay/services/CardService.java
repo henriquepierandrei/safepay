@@ -140,6 +140,27 @@ public class CardService {
 
 
 
+    public CardResponse resetRemainingCreditAllCards() {
+        var cards = cardRepository.findAll();
 
+        if (cards.isEmpty()) {
+            return new CardResponse(
+                    HttpStatus.OK,
+                    "Não há cartões para resetar."
+            );
+        }
+
+        for (Card card : cards) {
+            card.setRemainingLimit(card.getCreditLimit());
+        }
+
+        cardRepository.saveAll(cards);
+        cardRepository.flush(); // garante persistência imediata
+
+        return new CardResponse(
+                HttpStatus.OK,
+                "Todos os cartões foram resetados!"
+        );
+    }
 }
 

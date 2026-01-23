@@ -73,6 +73,12 @@ public class DeviceController {
         return ResponseEntity.ok(deviceService.addCardToDevice(dto));
     }
 
+    @PostMapping("/cards/add/automatic")
+    public ResponseEntity<?> addCardAutomatic() {
+        // Valida e processa o vínculo no service
+        return ResponseEntity.ok(deviceService.addCardToDeviceAutomatic());
+    }
+
     /**
      * Vincula um cartão a um dispositivo.
      *

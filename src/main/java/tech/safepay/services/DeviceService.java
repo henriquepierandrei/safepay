@@ -1,6 +1,7 @@
 package tech.safepay.services;
 
 import jakarta.transaction.Transactional;
+import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import tech.safepay.dtos.cards.CardsInDeviceResponseDto;
@@ -28,6 +29,7 @@ public class DeviceService {
     private static final String[] OS_OPTIONS_MOBILE = {"Android", "iOS"};
     private static final String[] DESKTOP_BROWSERS = {"Chrome", "Firefox", "Edge", "Safari"};
     private static final String[] MOBILE_BROWSERS  = {"Chrome Mobile", "Safari Mobile", "Samsung Internet"};
+
 
     public record DeviceResponse(String message, HttpStatus status){}
 
@@ -144,6 +146,39 @@ public class DeviceService {
 
         return new DeviceResponse("Cartão adicionado no dispositivo", HttpStatus.OK);
     }
+
+
+    public DeviceResponse addCardToDeviceAutomatic() {
+        // Pega todos os dispositivos
+        List<Device> devices = deviceRepository.findAll();
+
+        // Se não tiver dispositivos, não faz sentido
+        if (devices.isEmpty()) {
+            return new DeviceResponse("Nenhum dispositivo disponível para adicionar cartões", HttpStatus.BAD_REQUEST);
+        }
+
+        // Pega dois cartões aleatórios
+        List<Card> cards = sortCardToDevice();
+
+        // Distribui os cartões nos dispositivos
+        for (Device device : devices) {
+            for (Card card : cards) {
+                if (!device.getCards().contains(card)) {
+                    device.getCards().add(card);
+                }
+                if (!card.getDevices().contains(device)) {
+                    card.getDevices().add(device);
+                }
+            }
+        }
+
+        // Salva todos os dispositivos (JPA cuida do relacionamento)
+        deviceRepository.saveAll(devices);
+        deviceRepository.flush();
+
+        return new DeviceResponse("Cartões adicionados automaticamente aos dispositivos", HttpStatus.OK);
+    }
+
 
 
     /**

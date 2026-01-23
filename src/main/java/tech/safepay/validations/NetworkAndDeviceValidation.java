@@ -104,13 +104,8 @@ public class NetworkAndDeviceValidation {
 
         if (previous == null) return result;
 
-
-
         String prevFp = previous.getDeviceFingerprint();
         String currFp = transaction.getDeviceFingerprint();
-
-        System.out.println(prevFp);
-        System.out.println(currFp);
 
         if (prevFp != null && currFp != null && !prevFp.equals(currFp)) {
             result.addScore(AlertType.DEVICE_FINGERPRINT_CHANGE.getScore());

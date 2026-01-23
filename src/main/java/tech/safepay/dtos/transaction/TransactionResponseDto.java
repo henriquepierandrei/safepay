@@ -10,7 +10,6 @@ import tech.safepay.dtos.validation.ValidationResultDto;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.List;
 
 public record TransactionResponseDto(
         CardDataResponseDto card,
