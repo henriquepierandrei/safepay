@@ -2,10 +2,13 @@ package tech.safepay.services;
 
 import org.springframework.stereotype.Service;
 import tech.safepay.Enums.AlertType;
-import tech.safepay.Enums.TransactionStatus;
+import tech.safepay.Enums.TransactionDecision;
 import tech.safepay.dtos.validation.ValidationResultDto;
 import tech.safepay.entities.FraudAlert;
 import tech.safepay.entities.Transaction;
+import tech.safepay.ml.FraudTraining;
+import tech.safepay.ml.FraudTrainingFactory;
+import tech.safepay.ml.FraudTrainingRepository;
 import tech.safepay.repositories.CardRepository;
 import tech.safepay.validations.TransactionGlobalValidation;
 import java.math.BigDecimal;
@@ -19,12 +22,19 @@ public class TransactionDecisionService {
     private final FraudAlertFactory fraudAlertFactory;
     private final CardRepository cardRepository;
 
-    public TransactionDecisionService(TransactionGlobalValidation validation, CardPatternService cardPatternService,
-                                      FraudAlertFactory fraudAlertFactory, CardRepository cardRepository) {
+
+    private final FraudTrainingRepository fraudTrainingRepository;
+    private final FraudTrainingFactory fraudTrainingFactory;
+
+
+    public TransactionDecisionService(TransactionGlobalValidation validation, CardPatternService cardPatternService, FraudAlertFactory fraudAlertFactory,
+                                      CardRepository cardRepository, FraudTrainingRepository fraudTrainingRepository, FraudTrainingFactory fraudTrainingFactory) {
         this.validation = validation;
         this.cardPatternService = cardPatternService;
         this.fraudAlertFactory = fraudAlertFactory;
         this.cardRepository = cardRepository;
+        this.fraudTrainingRepository = fraudTrainingRepository;
+        this.fraudTrainingFactory = fraudTrainingFactory;
     }
 
     /**
@@ -55,34 +65,48 @@ public class TransactionDecisionService {
 
         // 3️⃣ Define status da transação baseado no score
         if (totalScore < 25) {
-            transaction.setTransactionStatus(TransactionStatus.APPROVED);
+            transaction.setTransactionDecision(TransactionDecision.APPROVED);
             transaction.setFraud(false);
         } else if (totalScore >= 25 && totalScore < 60) {
-            transaction.setTransactionStatus(TransactionStatus.PENDING);
+            transaction.setTransactionDecision(TransactionDecision.REVIEW);
             transaction.setFraud(false);
         } else { // totalScore >= 60
-            transaction.setTransactionStatus(TransactionStatus.NOT_APPROVED);
+            transaction.setTransactionDecision(TransactionDecision.BLOCKED);
             transaction.setFraud(true);
         }
 
         // 4️⃣ Override se for teste forçado
         if (successForce) {
-            transaction.setTransactionStatus(TransactionStatus.APPROVED);
+            transaction.setTransactionDecision(TransactionDecision.APPROVED);
         }
 
         if (result.getTriggeredAlerts().contains(AlertType.CREDIT_LIMIT_REACHED)) {
-            transaction.setTransactionStatus(TransactionStatus.NOT_APPROVED);
+            transaction.setTransactionDecision(TransactionDecision.BLOCKED);
         }
 
 
         // 5️⃣ Cria FraudAlert se houver alertas
         if (!triggeredAlerts.isEmpty()) {
-            FraudAlert alert = fraudAlertFactory.create(transaction, triggeredAlerts, totalScore);
+
+            FraudAlert alert = fraudAlertFactory.create(
+                    transaction,
+                    triggeredAlerts,
+                    totalScore
+            );
+
+            FraudTraining training = fraudTrainingFactory.from(
+                    transaction,
+                    triggeredAlerts,
+                    totalScore
+            );
+
+            fraudTrainingRepository.save(training);
         }
+
 
         cardPatternService.buildOrUpdateCardPattern(transaction.getCard());
 
-        if (transaction.getTransactionStatus() == TransactionStatus.APPROVED) {
+        if (transaction.getTransactionDecision() == TransactionDecision.APPROVED) {
             var card = transaction.getCard();
 
             BigDecimal remaining = card.getRemainingLimit();

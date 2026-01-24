@@ -75,7 +75,7 @@ public class TransactionService {
                 null,
                 deviceDto,
                 transaction.getIpAddress(),
-                transaction.getTransactionStatus(),
+                transaction.getTransactionDecision(),
                 transaction.getFraud(),
                 transaction.getCreatedAt()
         );

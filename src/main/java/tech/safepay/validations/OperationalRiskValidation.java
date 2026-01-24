@@ -2,7 +2,7 @@ package tech.safepay.validations;
 
 import org.springframework.stereotype.Component;
 import tech.safepay.Enums.AlertType;
-import tech.safepay.Enums.TransactionStatus;
+import tech.safepay.Enums.TransactionDecision;
 import tech.safepay.dtos.validation.ValidationResultDto;
 import tech.safepay.entities.Transaction;
 import java.util.List;
@@ -18,7 +18,7 @@ public class OperationalRiskValidation {
         List<Transaction> recentTransactions = snapshot.last5Minutes();
 
         long failedCount = recentTransactions.stream()
-                .filter(t -> t.getTransactionStatus() == TransactionStatus.NOT_APPROVED)
+                .filter(t -> t.getTransactionDecision() == TransactionDecision.BLOCKED)
                 .count();
 
         if (failedCount >= 3) {
@@ -35,7 +35,7 @@ public class OperationalRiskValidation {
     public ValidationResultDto suspiciousSuccessAfterFailure(Transaction transaction, TransactionGlobalValidation.ValidationSnapshot snapshot) {
         ValidationResultDto result = new ValidationResultDto();
 
-        if (transaction.getTransactionStatus() != TransactionStatus.APPROVED) {
+        if (transaction.getTransactionDecision() != TransactionDecision.APPROVED) {
             return result;
         }
 
@@ -44,7 +44,7 @@ public class OperationalRiskValidation {
         long failedBeforeApproval = lastTransactions.stream()
                 .skip(1) // ignora a atual
                 .limit(4) // olha só as imediatamente anteriores
-                .filter(t -> t.getTransactionStatus() == TransactionStatus.NOT_APPROVED)
+                .filter(t -> t.getTransactionDecision() == TransactionDecision.BLOCKED)
                 .count();
 
         if (failedBeforeApproval >= 2) {

@@ -1,10 +1,8 @@
 package tech.safepay.entities;
 
-import jakarta.annotation.Nullable;
 import jakarta.persistence.*;
-import tech.safepay.Enums.DeviceType;
 import tech.safepay.Enums.MerchantCategory;
-import tech.safepay.Enums.TransactionStatus;
+import tech.safepay.Enums.TransactionDecision;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -56,7 +54,7 @@ public class Transaction {
     private String ipAddress;
 
     @Enumerated(EnumType.STRING)
-    private TransactionStatus transactionStatus;
+    private TransactionDecision transactionDecision;
 
     private Boolean isFraud;
 
@@ -131,12 +129,12 @@ public class Transaction {
         this.ipAddress = ipAddress;
     }
 
-    public TransactionStatus getTransactionStatus() {
-        return transactionStatus;
+    public TransactionDecision getTransactionDecision() {
+        return transactionDecision;
     }
 
-    public void setTransactionStatus(TransactionStatus transactionStatus) {
-        this.transactionStatus = transactionStatus;
+    public void setTransactionDecision(TransactionDecision transactionDecision) {
+        this.transactionDecision = transactionDecision;
     }
 
     public Boolean getFraud() {

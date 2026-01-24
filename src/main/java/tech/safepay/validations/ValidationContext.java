@@ -27,6 +27,8 @@ public class ValidationContext {
         this.transactionRepository = transactionRepository;
     }
 
+
+
     public void loadContext(Transaction transaction) {
         if (loaded) return;
 

@@ -1,8 +1,7 @@
 package tech.safepay.generator.transactions;
 
 import org.springframework.stereotype.Component;
-import tech.safepay.Enums.MerchantCategory;
-import tech.safepay.Enums.TransactionStatus;
+import tech.safepay.Enums.TransactionDecision;
 import tech.safepay.configs.ResolveLocalizationConfig;
 import tech.safepay.dtos.transaction.ManualTransactionDto;
 import tech.safepay.dtos.transaction.ResolvedLocalizationDto;
@@ -12,10 +11,8 @@ import tech.safepay.repositories.CardRepository;
 import tech.safepay.repositories.DeviceRepository;
 import tech.safepay.repositories.TransactionRepository;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Random;
-import java.util.UUID;
 
 @Component
 public class TransactionGenerator {
@@ -129,7 +126,7 @@ public class TransactionGenerator {
 
 
         // Persistência inicial (estado neutro)
-        transaction.setTransactionStatus(TransactionStatus.PENDING);
+        transaction.setTransactionDecision(TransactionDecision.REVIEW);
         transaction.setFraud(false);
 
         return transactionRepository.save(transaction);
@@ -204,9 +201,9 @@ public class TransactionGenerator {
         transaction.setCreatedAt(LocalDateTime.now());
 
         // Estado inicial da transação
-        transaction.setTransactionStatus(TransactionStatus.PENDING);
+        transaction.setTransactionDecision(TransactionDecision.REVIEW);
         if (successForce){
-            transaction.setTransactionStatus(TransactionStatus.APPROVED);
+            transaction.setTransactionDecision(TransactionDecision.APPROVED);
         }
         transaction.setFraud(false);
 

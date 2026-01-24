@@ -2,11 +2,11 @@ package tech.safepay.validations;
 
 import org.springframework.stereotype.Component;
 import tech.safepay.Enums.AlertType;
-import tech.safepay.Enums.TransactionStatus;
+import tech.safepay.Enums.TransactionDecision;
 import tech.safepay.dtos.validation.ValidationResultDto;
 import tech.safepay.entities.Card;
 import tech.safepay.entities.Transaction;
-import tech.safepay.repositories.TransactionRepository;
+
 import java.math.BigDecimal;
 import java.util.List;
 
@@ -139,7 +139,7 @@ public class FraudPatternsValidation {
         ValidationResultDto result = new ValidationResultDto();
 
         Card card = transaction.getCard();
-        if (card == null || transaction.getTransactionStatus() != TransactionStatus.APPROVED) {
+        if (card == null || transaction.getTransactionDecision() != TransactionDecision.APPROVED) {
             return result;
         }
 
@@ -151,7 +151,7 @@ public class FraudPatternsValidation {
         long declinedCount = lastTransactions.stream()
                 .skip(1) // ignora a transação atual
                 .limit(3)
-                .filter(t -> t.getTransactionStatus() == TransactionStatus.NOT_APPROVED)
+                .filter(t -> t.getTransactionDecision() == TransactionDecision.BLOCKED)
                 .count();
 
         if (declinedCount >= 3) {

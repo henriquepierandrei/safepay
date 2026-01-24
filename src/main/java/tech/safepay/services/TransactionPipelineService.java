@@ -127,7 +127,7 @@ public class TransactionPipelineService {
                         transaction.getDevice().getBrowser()
                 ),
                 transaction.getIpAddress(),
-                transaction.getTransactionStatus(),
+                transaction.getTransactionDecision(),
                 transaction.getFraud(),
                 transaction.getCreatedAt()
         );
