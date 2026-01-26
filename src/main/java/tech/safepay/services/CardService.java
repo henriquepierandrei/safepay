@@ -84,7 +84,6 @@ public class CardService {
     }
 
 
-
     /**
      * Mascara o número do cartão
      * @param cardNumber - Número do cartão para mascarar
@@ -137,7 +136,6 @@ public class CardService {
                 card.getStatus()
         );
     }
-
 
 
     public CardResponse resetRemainingCreditAllCards() {

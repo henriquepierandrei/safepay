@@ -44,6 +44,8 @@ public class Card {
 
     private Integer riskScore;
     private LocalDateTime createdAt;
+    private LocalDateTime lastTransactionAt;
+
 
     // getters, setters, constructors
 
@@ -137,5 +139,13 @@ public class Card {
 
     public void setRemainingLimit(BigDecimal remainingLimit) {
         this.remainingLimit = remainingLimit;
+    }
+
+    public LocalDateTime getLastTransactionAt() {
+        return lastTransactionAt;
+    }
+
+    public void setLastTransactionAt(LocalDateTime lastTransactionAt) {
+        this.lastTransactionAt = lastTransactionAt;
     }
 }

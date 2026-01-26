@@ -6,7 +6,6 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import tech.safepay.dtos.transaction.TransactionResponseDto;
 import tech.safepay.services.TransactionPipelineService;
-import tech.safepay.validations.ValidationContext;
 
 import java.time.Instant;
 
@@ -18,28 +17,25 @@ public class TransactionScheduler {
     private final TransactionExecutionControl executionControl;
     private final TransactionPipelineService pipelineService;
     private final TransactionWebSocketPublisher publisher;
-    private final ValidationContextToWebsocket validationContextFactory;
 
     public TransactionScheduler(TransactionExecutionControl executionControl,
                                 TransactionPipelineService pipelineService,
-                                TransactionWebSocketPublisher publisher,
-                                ValidationContextToWebsocket validationContextFactory) {
+                                TransactionWebSocketPublisher publisher) {
         this.executionControl = executionControl;
         this.pipelineService = pipelineService;
         this.publisher = publisher;
-        this.validationContextFactory = validationContextFactory;
     }
 
+
+    // A cada 1min executa uma transacao! (para testes)
     @Scheduled(fixedRate = 60000)
     public void run() {
-
         if (executionControl.isPaused()) return;
 
-        log.info(Instant.now() + " | Transação sendo processada...");
-
-        TransactionResponseDto result =
-                pipelineService.process(false, false, null);
-
-        publisher.publish(result);
+        RequestScopeExecutor.executeInRequestScope(() -> {
+            log.info("Transação sendo processada...");
+            TransactionResponseDto result = pipelineService.process(false, false, null);
+            publisher.publish(result);
+        });
     }
 }

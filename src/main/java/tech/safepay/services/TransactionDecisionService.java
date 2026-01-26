@@ -6,12 +6,10 @@ import tech.safepay.Enums.TransactionDecision;
 import tech.safepay.dtos.validation.ValidationResultDto;
 import tech.safepay.entities.FraudAlert;
 import tech.safepay.entities.Transaction;
-import tech.safepay.ml.FraudTraining;
-import tech.safepay.ml.FraudTrainingFactory;
-import tech.safepay.ml.FraudTrainingRepository;
 import tech.safepay.repositories.CardRepository;
 import tech.safepay.validations.TransactionGlobalValidation;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -23,18 +21,15 @@ public class TransactionDecisionService {
     private final CardRepository cardRepository;
 
 
-    private final FraudTrainingRepository fraudTrainingRepository;
-    private final FraudTrainingFactory fraudTrainingFactory;
+
 
 
     public TransactionDecisionService(TransactionGlobalValidation validation, CardPatternService cardPatternService, FraudAlertFactory fraudAlertFactory,
-                                      CardRepository cardRepository, FraudTrainingRepository fraudTrainingRepository, FraudTrainingFactory fraudTrainingFactory) {
+                                      CardRepository cardRepository) {
         this.validation = validation;
         this.cardPatternService = cardPatternService;
         this.fraudAlertFactory = fraudAlertFactory;
         this.cardRepository = cardRepository;
-        this.fraudTrainingRepository = fraudTrainingRepository;
-        this.fraudTrainingFactory = fraudTrainingFactory;
     }
 
     /**
@@ -94,13 +89,6 @@ public class TransactionDecisionService {
                     totalScore
             );
 
-            FraudTraining training = fraudTrainingFactory.from(
-                    transaction,
-                    triggeredAlerts,
-                    totalScore
-            );
-
-            fraudTrainingRepository.save(training);
         }
 
 
@@ -113,7 +101,7 @@ public class TransactionDecisionService {
             if (remaining == null) remaining = card.getCreditLimit() != null ? card.getCreditLimit() : BigDecimal.ZERO;
 
             card.setRemainingLimit(remaining.subtract(transaction.getAmount()));
-
+            card.setLastTransactionAt(LocalDateTime.now());
 
              cardRepository.save(card);
         }

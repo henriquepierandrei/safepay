@@ -200,6 +200,7 @@ public class TransactionGenerator {
         transaction.setTransactionDateAndTime(LocalDateTime.now());
         transaction.setCreatedAt(LocalDateTime.now());
 
+
         // Estado inicial da transação
         transaction.setTransactionDecision(TransactionDecision.REVIEW);
         if (successForce){

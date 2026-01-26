@@ -1,9 +1,14 @@
 package tech.safepay.services;
 
 import jakarta.annotation.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tech.safepay.Enums.CardBrand;
+import tech.safepay.Enums.CardStatus;
 import tech.safepay.Enums.Severity;
+import tech.safepay.dtos.cards.CardDataResponseDto;
 import tech.safepay.dtos.device.DeviceListResponseDto;
 import tech.safepay.dtos.transaction.ManualTransactionDto;
 import tech.safepay.dtos.transaction.ResolvedLocalizationDto;
@@ -15,11 +20,11 @@ import tech.safepay.generator.transactions.TransactionGenerator;
 import tech.safepay.repositories.FraudAlertRepository;
 import tech.safepay.repositories.TransactionRepository;
 
-import java.util.UUID;
-
 @Service
 public class TransactionPipelineService {
 
+
+    private static final Logger log = LoggerFactory.getLogger(TransactionPipelineService.class);
     private final TransactionGenerator transactionGenerator;
     private final TransactionDecisionService decisionService;
     private final TransactionRepository transactionRepository;
@@ -102,11 +107,22 @@ public class TransactionPipelineService {
             severity = alert.getSeverity();
         }
 
+
+        log.info("Transação realizada com sucesso. || Id: {}.", transaction.getTransactionId());
+
         // =========================
         // 5️⃣ RETORNO DTO
         // =========================
         return new TransactionResponseDto(
-                null,
+                new CardDataResponseDto(
+                        transaction.getCard().getCardId(),
+                        transaction.getCard().getCardNumber(),
+                        transaction.getCard().getCardHolderName(),
+                        transaction.getCard().getCardBrand(),
+                        transaction.getCard().getExpirationDate(),
+                        transaction.getCard().getCreditLimit(),
+                        transaction.getCard().getStatus()
+                ),
                 transaction.getMerchantCategory(),
                 transaction.getAmount(),
                 transaction.getTransactionDateAndTime(),

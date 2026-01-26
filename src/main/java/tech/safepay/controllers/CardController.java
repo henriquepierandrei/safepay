@@ -25,4 +25,8 @@ public class CardController {
     public ResponseEntity<?> deleteCards(@RequestParam(name = "id") UUID id){
         return ResponseEntity.ok(cardService.cardDelete(id));
     }
+    @PutMapping("/remaining-credits/reset")
+    public ResponseEntity<?> remainingCreditResetAllCards(){
+        return ResponseEntity.ok(cardService.resetRemainingCreditAllCards());
+    }
 }
