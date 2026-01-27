@@ -11,21 +11,60 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Entidade que representa um cartão no domínio do SafePay.
+ * <p>
+ * Armazena informações financeiras, status operacional e vínculos
+ * com dispositivos utilizados em transações antifraude.
+ *
+ * Este objeto é persistido no banco de dados e participa
+ * diretamente do pipeline de avaliação de risco.
+ *
+ * Responsabilidades:
+ * <ul>
+ *   <li>Identificar o cartão de forma única</li>
+ *   <li>Manter vínculo com dispositivos utilizados</li>
+ *   <li>Armazenar limites, status e score de risco</li>
+ *   <li>Registrar datas relevantes para auditoria</li>
+ * </ul>
+ *
+ * Não contém regras de negócio complexas; atua como
+ * modelo de persistência e leitura.
+ *
+ * @author SafePay Team
+ * @version 1.0
+ */
 @Entity
 @Table(name = "cards_tb")
 public class Card {
 
+    /**
+     * Identificador único do cartão.
+     */
     @Id
     @GeneratedValue
     private UUID cardId;
 
+    /**
+     * Número do cartão (armazenamento depende de política de segurança).
+     */
     private String cardNumber;
+
+    /**
+     * Nome do portador do cartão.
+     */
     private String cardHolderName;
 
+    /**
+     * Bandeira do cartão.
+     */
     @Enumerated(EnumType.STRING)
     private CardBrand cardBrand;
 
-    // Lista de devices
+    /**
+     * Dispositivos vinculados ao cartão.
+     * Relação muitos-para-muitos.
+     */
     @ManyToMany
     @JoinTable(
             name = "card_devices",
@@ -34,22 +73,43 @@ public class Card {
     )
     private List<Device> devices = new ArrayList<>();
 
-
+    /**
+     * Data de expiração do cartão.
+     */
     private LocalDate expirationDate;
+
+    /**
+     * Limite total de crédito.
+     */
     private BigDecimal creditLimit;
+
+    /**
+     * Limite disponível no momento.
+     */
     private BigDecimal remainingLimit;
 
+    /**
+     * Status atual do cartão.
+     */
     @Enumerated(EnumType.STRING)
     private CardStatus status;
 
+    /**
+     * Score de risco acumulado do cartão.
+     */
     private Integer riskScore;
+
+    /**
+     * Data de criação do registro.
+     */
     private LocalDateTime createdAt;
+
+    /**
+     * Data da última transação realizada.
+     */
     private LocalDateTime lastTransactionAt;
 
-
-    // getters, setters, constructors
-
-
+    /** Construtor padrão exigido pelo JPA */
     public Card() {
     }
 

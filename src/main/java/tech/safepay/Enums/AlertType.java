@@ -1,132 +1,73 @@
 package tech.safepay.Enums;
 
+/**
+ * Representa os tipos de alertas antifraude que podem ser acionados
+ * durante a análise de uma transação.
+ *
+ * <p>Cada alerta possui um score associado, que contribui para o
+ * risco total da transação e para a decisão final.</p>
+ */
 public enum AlertType {
 
-    // =========================
-    // VALOR & LIMITE
-    // =========================
-
+    /** Valor significativamente acima do histórico do cartão. */
     HIGH_AMOUNT(20),
-    // Valor significativamente acima da média histórica do cartão.
-    // Forte quando combinado com device/local novo.
 
+    /** Tentativa de transação acima do limite disponível. */
     LIMIT_EXCEEDED(40),
-    // Tentativa de transação acima do limite disponível.
-    // Não é fraude por si só, mas é risco operacional alto.
 
-
-    // =========================
-    // FREQUÊNCIA & VELOCIDADE
-    // =========================
-
+    /** Muitas transações em curto intervalo de tempo. */
     VELOCITY_ABUSE(42),
-    // Muitas transações em curto intervalo.
-    // Um dos sinais mais fortes de fraude real.
 
+    /** Pico súbito de atividade fora do padrão histórico. */
     BURST_ACTIVITY(30),
-    // Pico súbito de atividade fora do padrão histórico.
-    // Complementa VELOCITY olhando o "formato" do comportamento.
 
-
-    // =========================
-    // LOCALIZAÇÃO & GEO
-    // =========================
-
+    /** Localização fora do padrão histórico do cartão. */
     LOCATION_ANOMALY(20),
-    // Local fora do padrão histórico do cartão.
-    // Sinal moderado, depende de contexto.
 
+    /** Distância incompatível com o tempo entre transações. */
     IMPOSSIBLE_TRAVEL(45),
-    // Distância incompatível com o tempo entre transações.
-    // Quase determinístico de fraude.
 
+    /** Transação originada em país classificado como alto risco. */
     HIGH_RISK_COUNTRY(40),
-    // Origem em país classificado como alto risco.
-    // Forte, mas não decisivo sozinho.
 
-    // =========================
-    // DISPOSITIVO & REDE
-    // =========================
-
+    /** Detecção de um dispositivo nunca utilizado anteriormente. */
     NEW_DEVICE_DETECTED(10),
-    // Device nunca utilizado anteriormente.
-    // Sozinho é fraco, mas ótimo em combinação.
 
+    /** Alteração relevante no fingerprint do dispositivo. */
     DEVICE_FINGERPRINT_CHANGE(25),
-    // Alteração relevante no fingerprint do dispositivo.
-    // Indica troca real de ambiente ou tentativa de evasão.
 
+    /** Uso de VPN, proxy ou rede TOR. */
     TOR_OR_PROXY_DETECTED(30),
-    // Uso de VPN, proxy ou TOR.
-    // Forte indicativo quando somado a outros sinais.
 
+    /** Múltiplos cartões utilizados no mesmo dispositivo. */
     MULTIPLE_CARDS_SAME_DEVICE(50),
-    // Vários cartões usados no mesmo dispositivo.
-    // Indicador clássico de fraude em escala.
 
-
-    // =========================
-    // COMPORTAMENTO DO USUÁRIO
-    // =========================
-
+    /** Transação realizada em horário atípico para o usuário. */
     TIME_OF_DAY_ANOMALY(6),
-    // Horário atípico para o usuário.
-    // Sinal fraco, mas barato e útil como complemento.
 
-
-    // =========================
-    // PADRÕES DE FRAUDE CLÁSSICOS
-    // =========================
-
+    /** Pequenas transações repetidas para validação do cartão. */
     CARD_TESTING(50),
-    // Pequenas transações repetidas para validar cartão.
-    // Altíssimo valor preditivo.
 
+    /** Sequência de microtransações suspeitas. */
     MICRO_TRANSACTION_PATTERN(35),
-    // Sequência de valores muito baixos.
-    // Variante de card testing, mas menos agressiva.
 
+    /** Múltiplas recusas seguidas de aprovação. */
     DECLINE_THEN_APPROVE_PATTERN(38),
-    // Múltiplas recusas seguidas de aprovação.
-    // Muito comum após brute force de dados.
 
-
-
-    // =========================
-    // RISCO OPERACIONAL
-    // =========================
-
+    /** Diversas tentativas falhas consecutivas. */
     MULTIPLE_FAILED_ATTEMPTS(25),
-    // Diversas tentativas falhas consecutivas.
-    // Forte quando combinado com velocity.
 
+    /** Aprovação após sequência de falhas suspeitas. */
     SUSPICIOUS_SUCCESS_AFTER_FAILURE(35),
-    // Aprovação após sequência de falhas.
-    // Clássico padrão de ataque bem-sucedido.
 
-
-    // =========================
-    // MODELO & SCORE
-    // =========================
-
+    /** Modelo estatístico detectou comportamento anômalo. */
     ANOMALY_MODEL_TRIGGERED(30),
-    // Modelo estatístico detectou padrão fora da normalidade.
-    // Deve pesar, mas nunca decidir sozinho.
 
+    /** Limite de crédito atingido ou ultrapassado. */
+    CREDIT_LIMIT_REACHED(40),
 
-    // =========================
-    // LIMITE & EXPIRAÇÃO
-    // =========================
-
-        CREDIT_LIMIT_REACHED(40),
-    // Tentativa de transação que atinge ou ultrapassa o limite de crédito do cartão.
-    // Forte indicador de risco, especialmente se combinado com outros alertas.
-
-        EXPIRATION_DATE_APPROACHING(25);
-    // Transação próxima da data de expiração do cartão.
-    // Sinal moderado de risco operacional ou possível tentativa de uso fraudulento.
-
-
+    /** Transação próxima da data de expiração do cartão. */
+    EXPIRATION_DATE_APPROACHING(25);
 
     private final int score;
 
@@ -134,10 +75,16 @@ public enum AlertType {
         this.score = score;
     }
 
+    /**
+     * Retorna o score de risco associado ao alerta.
+     */
     public int getScore() {
         return score;
     }
 
+    /**
+     * Converte o score do alerta em severidade.
+     */
     public Severity getSeverity() {
         if (score >= 100) return Severity.CRITICAL;
         if (score >= 70) return Severity.HIGH;

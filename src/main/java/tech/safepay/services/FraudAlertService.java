@@ -8,7 +8,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import tech.safepay.Enums.AlertType;
 import tech.safepay.Enums.Severity;
-import tech.safepay.configs.FraudAlertSpecifications;
+import tech.safepay.specifications.FraudAlertSpecifications;
 import tech.safepay.dtos.fraudalert.FraudAlertResponseDTO;
 import tech.safepay.entities.FraudAlert;
 import tech.safepay.repositories.FraudAlertRepository;

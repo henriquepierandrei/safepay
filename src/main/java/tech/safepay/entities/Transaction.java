@@ -8,62 +8,130 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+/**
+ * Entidade que representa uma transação processada pelo SafePay.
+ * <p>
+ * Consolida dados financeiros, contexto geográfico, dispositivo
+ * utilizado e o resultado da decisão antifraude.
+ *
+ * Esta entidade é o núcleo do pipeline antifraude e serve como
+ * base para geração de alertas, cálculo de score e auditoria.
+ *
+ * Responsabilidades:
+ * <ul>
+ *   <li>Registrar informações financeiras da transação</li>
+ *   <li>Associar cartão e dispositivo envolvidos</li>
+ *   <li>Persistir dados de localização e IP</li>
+ *   <li>Armazenar decisão e classificação de fraude</li>
+ * </ul>
+ *
+ * Não executa validações; apenas representa o resultado
+ * do processamento realizado pelo pipeline antifraude.
+ *
+ * @author SafePay Team
+ * @version 1.0
+ */
 @Entity
 @Table(name = "transactions_tb")
 public class Transaction {
 
+    /**
+     * Identificador único da transação.
+     */
     @Id
     @GeneratedValue
     private UUID transactionId;
 
+    /**
+     * Cartão utilizado na transação.
+     */
     @ManyToOne
     @JoinColumn(name = "card_id", nullable = false)
     private Card card;
 
+    /**
+     * Categoria do comerciante.
+     */
     @Enumerated(EnumType.STRING)
     private MerchantCategory merchantCategory;
 
+    /**
+     * Valor monetário da transação.
+     */
     private BigDecimal amount;
 
+    /**
+     * Data e hora da transação.
+     */
     private LocalDateTime transactionDateAndTime;
 
+    /**
+     * Latitude geográfica da transação.
+     */
     @Column(length = 100)
-        private String latitude;
+    private String latitude;
 
+    /**
+     * Longitude geográfica da transação.
+     */
     @Column(length = 100)
     private String longitude;
 
+    /**
+     * Código do país identificado.
+     */
     @Column(length = 100)
     private String countryCode;
 
+    /**
+     * Estado identificado na transação.
+     */
     @Column(length = 100)
     private String state;
 
+    /**
+     * Cidade identificada na transação.
+     */
     @Column(length = 100)
     private String city;
 
-
+    /**
+     * Dispositivo utilizado na transação.
+     */
     @ManyToOne(optional = false)
     private Device device;
 
+    /**
+     * Fingerprint do dispositivo no momento da transação.
+     */
     @Column(nullable = false)
     private String deviceFingerprint;
 
-
-
+    /**
+     * Endereço IP de origem da transação.
+     */
     private String ipAddress;
 
+    /**
+     * Decisão final do pipeline antifraude.
+     */
     @Enumerated(EnumType.STRING)
     private TransactionDecision transactionDecision;
 
+    /**
+     * Indica se a transação foi classificada como fraude.
+     */
     private Boolean isFraud;
 
+    /**
+     * Data de criação do registro.
+     */
     private LocalDateTime createdAt;
 
-    // getters, setters, constructors
-
+    /** Construtor padrão exigido pelo JPA */
     public Transaction() {
     }
+
 
     public UUID getTransactionId() {
         return transactionId;

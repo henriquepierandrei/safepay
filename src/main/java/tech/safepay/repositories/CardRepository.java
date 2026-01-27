@@ -13,10 +13,45 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Repositório responsável pelo acesso e gerenciamento
+ * de dados relacionados a cartões.
+ *
+ * <p>Centraliza consultas transacionais e analíticas
+ * utilizadas por módulos de negócio, risco e antifraude,
+ * oferecendo suporte a filtros dinâmicos e paginação.</p>
+ */
 @Repository
 public interface CardRepository extends JpaRepository<Card, UUID> {
+
+    /**
+     * Recupera todos os cartões que possuem pelo menos
+     * um dispositivo vinculado.
+     *
+     * <p>Utilizado em análises de relacionamento cartão–dispositivo
+     * e cenários de correlação antifraude.</p>
+     *
+     * @return lista de cartões com dispositivos associados
+     */
     List<Card> findByDevicesIsNotEmpty();
 
+    /**
+     * Realiza uma busca paginada de cartões aplicando filtros opcionais.
+     *
+     * <p>Permite filtrar por bandeira do cartão e por critério
+     * de criação recente, mantendo flexibilidade para
+     * consultas administrativas e operacionais.</p>
+     *
+     * <p>Quando {@code recentlyCreated} é verdadeiro, retorna cartões
+     * criados a partir da data limite. Quando falso, retorna cartões
+     * anteriores à data limite. Caso seja nulo, o filtro é ignorado.</p>
+     *
+     * @param brand bandeira do cartão (opcional)
+     * @param recentlyCreated indicador de criação recente (opcional)
+     * @param limitDate data de referência para avaliação temporal
+     * @param pageable parâmetros de paginação e ordenação
+     * @return página de cartões conforme os filtros aplicados
+     */
     @Query("""
                 SELECT c FROM Card c
                 WHERE (:brand IS NULL OR c.cardBrand = :brand)
@@ -36,6 +71,5 @@ public interface CardRepository extends JpaRepository<Card, UUID> {
             @Param("limitDate") LocalDateTime limitDate,
             Pageable pageable
     );
-
 
 }
