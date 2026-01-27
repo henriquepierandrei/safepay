@@ -1,14 +1,15 @@
 package tech.safepay.services;
 
 import jakarta.transaction.Transactional;
-import org.jspecify.annotations.Nullable;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import tech.safepay.dtos.cards.CardsInDeviceResponseDto;
+import tech.safepay.Enums.DeviceType;
 import tech.safepay.dtos.device.DeviceListResponseDto;
 import tech.safepay.entities.Card;
 import tech.safepay.entities.Device;
-import tech.safepay.Enums.DeviceType;
 import tech.safepay.exceptions.card.CardNotFoundException;
 import tech.safepay.exceptions.device.DeviceMaxSupportedException;
 import tech.safepay.exceptions.device.DeviceNotFoundException;
@@ -29,13 +30,8 @@ public class DeviceService {
     private static final String[] OS_OPTIONS_MOBILE = {"Android", "iOS"};
     private static final String[] DESKTOP_BROWSERS = {"Chrome", "Firefox", "Edge", "Safari"};
     private static final String[] MOBILE_BROWSERS  = {"Chrome Mobile", "Safari Mobile", "Samsung Internet"};
-
-
-    public record DeviceResponse(String message, HttpStatus status){}
-
     private final CardRepository cardRepository;
     private final DeviceRepository deviceRepository;
-
     public DeviceService(CardRepository cardRepository, DeviceRepository deviceRepository) {
         this.cardRepository = cardRepository;
         this.deviceRepository = deviceRepository;
@@ -50,7 +46,6 @@ public class DeviceService {
         Collections.shuffle(cards);
         return cards.subList(0, 2);
     }
-
 
     /**
      * Gerar Dispositivo
@@ -101,8 +96,6 @@ public class DeviceService {
         return new DeviceResponse("Registro bem sucedido", HttpStatus.OK);
     }
 
-
-
     // Auxiliares para random OS e Browser
     private String randomOs(DeviceType type) {
         return switch (type) {
@@ -111,6 +104,7 @@ public class DeviceService {
             default -> "Embedded Linux";
         };
     }
+
     private String randomBrowser(DeviceType type) {
         return switch (type) {
             case DESKTOP -> DESKTOP_BROWSERS[RANDOM.nextInt(DESKTOP_BROWSERS.length)];
@@ -119,13 +113,6 @@ public class DeviceService {
         };
     }
 
-
-    /**
-     * Adiciona cartão no dispositivo
-     * @param cardId - Id do cartão
-     * @param deviceId - Id do dispositivo
-     */
-    public record  AddCardDto(UUID cardId, UUID deviceId){};
     public DeviceResponse addCardToDevice(AddCardDto dto){
         var card = cardRepository.findById(dto.cardId())
                 .orElseThrow(() -> new CardNotFoundException("Cartão de crédito não encontrado!"));
@@ -146,7 +133,6 @@ public class DeviceService {
 
         return new DeviceResponse("Cartão adicionado no dispositivo", HttpStatus.OK);
     }
-
 
     public DeviceResponse addCardToDeviceAutomatic() {
         // Pega todos os dispositivos
@@ -179,28 +165,37 @@ public class DeviceService {
         return new DeviceResponse("Cartões adicionados automaticamente aos dispositivos", HttpStatus.OK);
     }
 
-
+    ;
 
     /**
      * Obtém uma lista de dispositivo
      * @return - Lista de dispositivos
      */
-    public DeviceListResponseDto getDeviceList() {
+    public Page<DeviceListResponseDto.DeviceDto> getDeviceList(
+            DeviceType deviceType,
+            String os,
+            String browser,
+            int page,
+            int size
+    ) {
+        Pageable pageable = PageRequest.of(page, size);
 
-        var devices = deviceRepository.findAll();
+        Page<Device> devices = deviceRepository.findWithFilters(
+                deviceType,
+                os,
+                browser,
+                pageable
+        );
 
-        List<DeviceListResponseDto.DeviceDto> deviceDtos =
-                devices.stream()
-                        .map(device -> new DeviceListResponseDto.DeviceDto(
-                                device.getId(),
-                                device.getFingerPrintId(),
-                                device.getDeviceType(),
-                                device.getOs(),
-                                device.getBrowser()
-                        ))
-                        .toList();
-
-        return new DeviceListResponseDto(deviceDtos);
+        return devices.map(device ->
+                new DeviceListResponseDto.DeviceDto(
+                        device.getId(),
+                        device.getFingerPrintId(),
+                        device.getDeviceType(),
+                        device.getOs(),
+                        device.getBrowser()
+                )
+        );
     }
 
 
@@ -224,6 +219,30 @@ public class DeviceService {
         );
     }
 
+    public DeviceResponse updateFingerPrint(UUID deviceId) {
+        var optionalDevice = deviceRepository.findById(deviceId).orElseThrow(() -> new DeviceNotFoundException("Não foi possível encontrar o dispositivo."));
+        UUID newFingerPrint = UUID.randomUUID();
+
+        optionalDevice.setFingerPrintId(newFingerPrint.toString());
+        deviceRepository.save(optionalDevice);
+        return new DeviceResponse(
+                "Biometria atualizada com sucesso!",
+                HttpStatus.OK
+        );
+
+    }
+
+    public record DeviceResponse(String message, HttpStatus status) {
+    }
+
+    /**
+     * Adiciona cartão no dispositivo
+     *
+     * @param cardId   - Id do cartão
+     * @param deviceId - Id do dispositivo
+     */
+    public record AddCardDto(UUID cardId, UUID deviceId) {
+    }
 
 
 }

@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import tech.safepay.Enums.AlertStatus;
 import tech.safepay.Enums.AlertType;
 import tech.safepay.Enums.Severity;
+import tech.safepay.configs.AlertTypeConverter;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -26,7 +27,8 @@ public class FraudAlert {
     private Card card;
 
 
-    @Enumerated(EnumType.STRING)
+    @Convert(converter = AlertTypeConverter.class)
+    @Column(name = "alert_types", length = 500)
     private List<AlertType> alertTypes;
 
 

@@ -1,15 +1,21 @@
 package tech.safepay.services;
 
 import jakarta.transaction.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import tech.safepay.Enums.CardBrand;
 import tech.safepay.Enums.CardStatus;
 import tech.safepay.dtos.cards.CardDataResponseDto;
 import tech.safepay.dtos.cards.CardResponse;
 import tech.safepay.dtos.cards.CardsInDeviceResponseDto;
+import tech.safepay.dtos.cards.CardsResponse;
 import tech.safepay.entities.Card;
-import tech.safepay.exceptions.card.CardQuantityMaxException;
 import tech.safepay.exceptions.card.CardNotFoundException;
+import tech.safepay.exceptions.card.CardQuantityMaxException;
 import tech.safepay.exceptions.device.DeviceNotFoundException;
 import tech.safepay.generator.DefaultCardGenerator;
 import tech.safepay.repositories.CardRepository;
@@ -160,5 +166,22 @@ public class CardService {
                 "Todos os cartões foram resetados!"
         );
     }
+
+    public Page<CardsResponse> getWithFilters(
+            CardBrand cardBrand,
+            Boolean recentlyCreated,
+            int page,
+            int size
+    ) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+
+        LocalDateTime limitDate = LocalDateTime.now().minusDays(7);
+
+        return cardRepository
+                .findWithFilters(cardBrand, recentlyCreated, limitDate, pageable)
+                .map(CardsResponse::fromEntity);
+    }
+
+
 }
 

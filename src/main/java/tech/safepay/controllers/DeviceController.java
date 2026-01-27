@@ -1,8 +1,11 @@
 package tech.safepay.controllers;
 
 
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import tech.safepay.Enums.DeviceType;
+import tech.safepay.dtos.device.DeviceListResponseDto;
 import tech.safepay.services.CardService;
 import tech.safepay.services.DeviceService;
 
@@ -46,10 +49,18 @@ public class DeviceController {
      * @return lista de dispositivos (DTO)
      */
     @GetMapping("/list")
-    public ResponseEntity<?> getDeviceList() {
-        // Controller não transforma dados, apenas repassa
-        return ResponseEntity.ok(deviceService.getDeviceList());
+    public ResponseEntity<Page<DeviceListResponseDto.DeviceDto>> getDeviceList(
+            @RequestParam(required = false) DeviceType deviceType,
+            @RequestParam(required = false) String os,
+            @RequestParam(required = false) String browser,
+            @RequestParam int page,
+            @RequestParam int size
+    ) {
+        return ResponseEntity.ok(
+                deviceService.getDeviceList(deviceType, os, browser, page, size)
+        );
     }
+
 
     /**
      * Vincula um cartão a um dispositivo.
@@ -117,6 +128,12 @@ public class DeviceController {
     ) {
         // Busca cartões associados ao device
         return ResponseEntity.ok(cardService.getCardsInDevice(deviceId));
+    }
+
+
+    @PutMapping("/fingerprint/update")
+    public ResponseEntity<?> updateFingerPrint(@RequestParam(required = true, name = "deviceId") UUID deviceId) {
+        return ResponseEntity.ok(deviceService.updateFingerPrint(deviceId));
     }
 
 }
