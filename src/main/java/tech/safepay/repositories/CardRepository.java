@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import tech.safepay.Enums.CardBrand;
 import tech.safepay.entities.Card;
+import tech.safepay.entities.Device;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -75,7 +76,13 @@ public interface CardRepository extends JpaRepository<Card, UUID> {
 
 
 
-    Optional<Card> findByIdAndDeviceId(UUID id, UUID deviceId);
-
+    /**
+     * Busca um cartão pelo ID e que contenha um device específico na lista de devices.
+     *
+     * @param cardId UUID do cartão
+     * @param deviceId UUID do device
+     * @return Optional contendo o Card, se encontrado
+     */
+    Optional<Card> findByCardIdAndDevices_Id(UUID cardId, UUID deviceId);
 
 }

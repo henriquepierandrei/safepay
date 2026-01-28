@@ -224,7 +224,7 @@ public class TransactionGenerator {
         Card card = sortCard();
 
         if (card.getCardIsBlock() || card.getCardIsBlock()) {
-            throw new CardBlockedOrLostException("Cartão já está bloqueado ou perdido.");
+            throw new CardBlockedOrLostException("Cartão está bloqueado ou perdido.");
         }
 
         Transaction transaction = new Transaction();
@@ -447,7 +447,7 @@ public class TransactionGenerator {
                 );
 
         if (card.getCardIsBlock() || card.getCardIsBlock()) {
-            throw new CardBlockedOrLostException("Cartão já está bloqueado ou perdido.");
+            throw new CardBlockedOrLostException("Cartão está bloqueado ou perdido.");
         }
 
         // Recupera o device informado

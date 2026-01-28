@@ -111,6 +111,9 @@ public class CardService {
 
             var cardBrand = defaultCardGenerator.choiceCardBrand();
 
+            card.setCardIsBlock(false);
+            card.setCardIsLost(false);
+
             card.setCardBrand(cardBrand);
             card.setCardNumber(defaultCardGenerator.generateNumber(cardBrand));
             card.setCreatedAt(LocalDateTime.now());
@@ -350,13 +353,9 @@ public class CardService {
      * @throws CardNotFoundException se o cartão não existir ou não estiver vinculado ao device informado
      */
     public CardBlockResponseDto updateCardStatus(UUID cardId, UUID deviceId, boolean block) {
-        var cardOptional = cardRepository.findByIdAndDeviceId(cardId, deviceId);
+        var cardOptional = cardRepository.findByCardIdAndDevices_Id(cardId, deviceId);
 
-        if (cardOptional.isEmpty()) {
-            throw new CardNotFoundException("Cartão não encontrado ou não vinculado a este dispositivo.");
-        }
-
-        var card = cardOptional.get();
+        var card = cardOptional.orElseThrow(() -> new CardNotFoundException("Cartão não encontrado para este dispositivo."));
 
         if (card.getCardIsBlock() || card.getCardIsLost()) {
             throw new CardBlockedOrLostException("Cartão já está bloqueado ou perdido.");
