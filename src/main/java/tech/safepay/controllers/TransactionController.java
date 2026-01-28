@@ -1,5 +1,9 @@
 package tech.safepay.controllers;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import tech.safepay.dtos.transaction.ManualTransactionDto;
@@ -7,6 +11,7 @@ import tech.safepay.dtos.transaction.TransactionResponseDto;
 import tech.safepay.services.TransactionService;
 import tech.safepay.services.TransactionPipelineService;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
@@ -67,6 +72,35 @@ public class TransactionController {
                 transactionService.getTransactionById(transactionId)
         );
     }
+
+    @GetMapping("/get/filters")
+    public Page<TransactionResponseDto> getTransactions(
+            @RequestParam UUID cardId,
+            @RequestParam UUID deviceId,
+            @RequestParam(required = false) Boolean isReimbursement,
+            @RequestParam(required = false) LocalDateTime startDate,
+            @RequestParam(required = false) LocalDateTime endDate,
+            @RequestParam(defaultValue = "desc") String sort,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        Sort direction = sort.equalsIgnoreCase("asc")
+                ? Sort.by("createdAt").ascending()
+                : Sort.by("createdAt").descending();
+
+        Pageable pageable = PageRequest.of(page, size, direction);
+
+        return transactionService.findTransactions(
+                cardId,
+                deviceId,
+                isReimbursement,
+                startDate,
+                endDate,
+                pageable
+        );
+    }
+
+
 
     /**
      * Processa uma nova transação simulada através do pipeline antifraude.

@@ -35,6 +35,9 @@ public record TransactionResponseDto(
         /** Valor monetário da transação */
         BigDecimal amount,
 
+        /** Foi Reembolsado */
+        Boolean isReimbursement,
+
         /** Data e hora em que a transação ocorreu */
         LocalDateTime transactionDateAndTime,
 

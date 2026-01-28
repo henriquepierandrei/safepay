@@ -110,23 +110,6 @@ public class Card {
     private LocalDateTime lastTransactionAt;
 
 
-    /**
-     * Indica se o cartão está bloqueado.
-     *
-     * <p>Um cartão bloqueado não pode ser usado para realizar transações.
-     * Essa propriedade deve ser verificada antes de qualquer operação de débito ou crédito.</p>
-     */
-    private Boolean cardIsBlock;
-
-    /**
-     * Indica se o cartão foi reportado como perdido.
-     *
-     * <p>Um cartão perdido não deve ser utilizado para transações.
-     * Essa propriedade é útil para evitar fraudes e permitir ações de segurança,
-     * como bloqueio automático ou emissão de um novo cartão.</p>
-     */
-    private Boolean cardIsLost;
-
 
     /** Construtor padrão exigido pelo JPA */
     public Card() {
@@ -228,19 +211,4 @@ public class Card {
         this.lastTransactionAt = lastTransactionAt;
     }
 
-    public Boolean getCardIsBlock() {
-        return cardIsBlock;
-    }
-
-    public void setCardIsBlock(Boolean cardIsBlock) {
-        this.cardIsBlock = cardIsBlock;
-    }
-
-    public Boolean getCardIsLost() {
-        return cardIsLost;
-    }
-
-    public void setCardIsLost(Boolean cardIsLost) {
-        this.cardIsLost = cardIsLost;
-    }
 }

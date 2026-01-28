@@ -1,16 +1,23 @@
 package tech.safepay.services;
 
 import jakarta.transaction.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import tech.safepay.dtos.cards.CardDataResponseDto;
 import tech.safepay.dtos.device.DeviceListResponseDto;
 import tech.safepay.dtos.transaction.ResolvedLocalizationDto;
 import tech.safepay.dtos.transaction.TransactionResponseDto;
+import tech.safepay.entities.Transaction;
 import tech.safepay.exceptions.transaction.TransactionNotFoundException;
 import tech.safepay.repositories.CardRepository;
 import tech.safepay.repositories.DeviceRepository;
 import tech.safepay.repositories.TransactionRepository;
+import tech.safepay.specifications.TransactionSpecification;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
@@ -101,6 +108,76 @@ public class TransactionService {
         return "**** **** **** " + cardNumber.substring(cardNumber.length() - 4);
     }
 
+    /**
+     * Converte uma entidade Transaction em TransactionResponseDto.
+     * <p>
+     * Este método centraliza a lógica de conversão de Transaction para DTO,
+     * garantindo consistência e reutilização em todos os pontos do serviço.
+     * <p>
+     * <b>Funcionalidades aplicadas:</b>
+     * <ul>
+     *   <li>Mascaramento automático de número de cartão (PCI-DSS)</li>
+     *   <li>Montagem de DTOs relacionados (CardDataResponseDto, DeviceDto)</li>
+     *   <li>Construção de localização resolvida (ResolvedLocalizationDto)</li>
+     *   <li>Proteção de dados sensíveis</li>
+     * </ul>
+     * <p>
+     * <b>Navegação de relacionamentos:</b>
+     * Utiliza lazy loading do JPA para acessar card e device relacionados.
+     * <p>
+     * <b>Campos opcionais (null):</b>
+     * Os seguintes campos retornam null:
+     * <ul>
+     *   <li><b>validationResult:</b> resultado da validação antifraude (não armazenado)</li>
+     *   <li><b>severity:</b> severidade do alerta (consulte FraudAlert separadamente)</li>
+     * </ul>
+     *
+     * @param transaction entidade Transaction a ser convertida
+     * @return TransactionResponseDto com todos os dados consolidados
+     */
+    private TransactionResponseDto toDto(Transaction transaction) {
+        var card = transaction.getCard();
+        var device = transaction.getDevice();
+
+        var cardDto = new CardDataResponseDto(
+                card.getCardId(),
+                getMaskedCardNumber(card.getCardNumber()),
+                card.getCardHolderName(),
+                card.getCardBrand(),
+                card.getExpirationDate(),
+                card.getCreditLimit(),
+                card.getStatus()
+        );
+
+        var deviceDto = new DeviceListResponseDto.DeviceDto(
+                device.getId(),
+                device.getFingerPrintId(),
+                device.getDeviceType(),
+                device.getOs(),
+                device.getBrowser()
+        );
+
+        return new TransactionResponseDto(
+                null,
+                transaction.getMerchantCategory(),
+                transaction.getAmount(),
+                transaction.getReimbursement(),
+                transaction.getTransactionDateAndTime(),
+                transaction.getLatitude(),
+                transaction.getLongitude(),
+                new ResolvedLocalizationDto(
+                        transaction.getCountryCode(),
+                        transaction.getState(),
+                        transaction.getCity()),
+                null,
+                null,
+                null,
+                transaction.getIpAddress(),
+                transaction.getTransactionDecision(),
+                transaction.getFraud(),
+                transaction.getCreatedAt()
+        );
+    }
 
     /**
      * Recupera os detalhes completos de uma transação específica por seu identificador.
@@ -129,16 +206,6 @@ public class TransactionService {
      *   <li>Dados sensíveis protegidos conforme PCI-DSS</li>
      * </ul>
      * <p>
-     * <b>Campos opcionais (null):</b>
-     * Os seguintes campos retornam null neste método:
-     * <ul>
-     *   <li><b>validationResult:</b> resultado da validação antifraude (não armazenado)</li>
-     *   <li><b>severity:</b> severidade do alerta (consulte FraudAlert separadamente)</li>
-     * </ul>
-     * <p>
-     * Para obter informações completas de validação e alertas, consulte o
-     * FraudAlertService utilizando o ID da transação.
-     * <p>
      * <b>Performance:</b>
      * Este método executa lazy loading de relacionamentos. Em contextos onde múltiplas
      * transações são consultadas, considere usar queries com fetch joins para otimizar
@@ -152,46 +219,87 @@ public class TransactionService {
         var transaction = transactionRepository.findById(id)
                 .orElseThrow(() -> new TransactionNotFoundException("Transação não encontrada"));
 
-        var card = transaction.getCard();
-        var device = transaction.getDevice();
-
-        var cardDto = new CardDataResponseDto(
-                card.getCardId(),
-                getMaskedCardNumber(card.getCardNumber()),
-                card.getCardHolderName(),
-                card.getCardBrand(),
-                card.getExpirationDate(),
-                card.getCreditLimit(),
-                card.getStatus()
-        );
-
-        var deviceDto = new DeviceListResponseDto.DeviceDto(
-                device.getId(),
-                device.getFingerPrintId(),
-                device.getDeviceType(),
-                device.getOs(),
-                device.getBrowser()
-        );
-
-        return new TransactionResponseDto(
-                cardDto,
-                transaction.getMerchantCategory(),
-                transaction.getAmount(),
-                transaction.getTransactionDateAndTime(),
-                transaction.getLatitude(),
-                transaction.getLongitude(),
-                new ResolvedLocalizationDto(
-                        transaction.getCountryCode(),
-                        transaction.getState(),
-                        transaction.getCity()),
-                null,
-                null,
-                deviceDto,
-                transaction.getIpAddress(),
-                transaction.getTransactionDecision(),
-                transaction.getFraud(),
-                transaction.getCreatedAt()
-        );
+        return toDto(transaction);
     }
+
+    /**
+     * Recupera uma página de transações associadas a um cartão e dispositivo específicos.
+     * <p>
+     * Este método busca transações com base em múltiplos critérios de filtro:
+     * <ul>
+     *   <li><b>cardId:</b> identificador do cartão (obrigatório)</li>
+     *   <li><b>deviceId:</b> identificador do dispositivo vinculado ao cartão (obrigatório)</li>
+     *   <li><b>isReimbursement:</b> filtro opcional para reembolsos
+     *       (true / false / null para todos)</li>
+     *   <li><b>startDate:</b> data/hora inicial do período de consulta (opcional)</li>
+     *   <li><b>endDate:</b> data/hora final do período de consulta (opcional)</li>
+     * </ul>
+     *
+     * <p>
+     * <b>Validação de segurança:</b>
+     * A busca valida explicitamente o relacionamento {@code Card -> Devices} antes de
+     * retornar qualquer dado. Apenas transações vinculadas <b>simultaneamente</b>
+     * ao cartão e ao dispositivo informados são retornadas, garantindo integridade
+     * e controle de acesso.
+     *
+     * <p>
+     * <b>Paginação e ordenação:</b>
+     * O resultado é retornado como um {@link org.springframework.data.domain.Page},
+     * permitindo:
+     * <ul>
+     *   <li>Controle de tamanho da página (page size)</li>
+     *   <li>Navegação entre páginas (page number)</li>
+     *   <li>Ordenação dinâmica via {@link org.springframework.data.domain.Pageable}</li>
+     *   <li>Consulta por transações mais recentes ou mais antigas</li>
+     * </ul>
+     *
+     * <p>
+     * <b>Ordenação padrão:</b>
+     * Caso não especificado, recomenda-se ordenar por {@code createdAt DESC}
+     * (transações mais recentes primeiro). Para transações mais antigas, utilize
+     * {@code createdAt ASC} no {@link Pageable}.
+     *
+     * <p>
+     * <b>Conversão automática:</b>
+     * Todas as entidades {@link Transaction} retornadas são automaticamente
+     * convertidas para {@link TransactionResponseDto} através do método
+     * {@link #toDto(Transaction)}, assegurando:
+     * <ul>
+     *   <li>Mascaramento de dados sensíveis</li>
+     *   <li>Conformidade com PCI-DSS</li>
+     *   <li>Não exposição de entidades JPA</li>
+     * </ul>
+     *
+     * @param cardId UUID do cartão
+     * @param deviceId UUID do dispositivo vinculado ao cartão
+     * @param isReimbursement filtro opcional para transações de reembolso
+     * @param startDate data/hora inicial para filtro de período (opcional)
+     * @param endDate data/hora final para filtro de período (opcional)
+     * @param pageable configuração de paginação e ordenação
+     * @return Page contendo {@link TransactionResponseDto} com os dados das transações
+     */
+
+    public Page<TransactionResponseDto> findTransactions(
+            UUID cardId,
+            UUID deviceId,
+            Boolean isReimbursement,
+            LocalDateTime startDate,
+            LocalDateTime endDate,
+            Pageable pageable
+    ) {
+        return transactionRepository
+                .findAll(
+                        TransactionSpecification.filter(
+                                cardId,
+                                deviceId,
+                                isReimbursement,
+                                startDate,
+                                endDate
+                        ),
+                        pageable
+                )
+                .map(this::toDto);
+    }
+
 
 }

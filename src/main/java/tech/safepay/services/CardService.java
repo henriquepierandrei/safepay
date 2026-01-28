@@ -111,8 +111,6 @@ public class CardService {
 
             var cardBrand = defaultCardGenerator.choiceCardBrand();
 
-            card.setCardIsBlock(false);
-            card.setCardIsLost(false);
 
             card.setCardBrand(cardBrand);
             card.setCardNumber(defaultCardGenerator.generateNumber(cardBrand));
@@ -357,14 +355,14 @@ public class CardService {
 
         var card = cardOptional.orElseThrow(() -> new CardNotFoundException("Cartão não encontrado para este dispositivo."));
 
-        if (card.getCardIsBlock() || card.getCardIsLost()) {
+        if (card.getStatus().equals(CardStatus.BLOCKED) || card.getStatus().equals(CardStatus.LOST)) {
             throw new CardBlockedOrLostException("Cartão já está bloqueado ou perdido.");
         }
 
         if (block) {
-            card.setCardIsBlock(true);
+            card.setStatus(CardStatus.BLOCKED);
         } else {
-            card.setCardIsLost(true);
+            card.setStatus(CardStatus.LOST);
         }
 
         cardRepository.saveAndFlush(card);

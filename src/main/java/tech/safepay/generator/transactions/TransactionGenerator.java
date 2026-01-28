@@ -1,6 +1,7 @@
 package tech.safepay.generator.transactions;
 
 import org.springframework.stereotype.Component;
+import tech.safepay.Enums.CardStatus;
 import tech.safepay.Enums.TransactionDecision;
 import tech.safepay.configs.ResolveLocalizationConfig;
 import tech.safepay.dtos.transaction.ManualTransactionDto;
@@ -223,7 +224,7 @@ public class TransactionGenerator {
 
         Card card = sortCard();
 
-        if (card.getCardIsBlock() || card.getCardIsBlock()) {
+        if (card.getStatus().equals(CardStatus.BLOCKED) || card.getStatus().equals(CardStatus.LOST)) {
             throw new CardBlockedOrLostException("Cartão está bloqueado ou perdido.");
         }
 
@@ -446,7 +447,7 @@ public class TransactionGenerator {
                         new CardNotFoundException("Cartão encontrado!")
                 );
 
-        if (card.getCardIsBlock() || card.getCardIsBlock()) {
+        if (card.getStatus().equals(CardStatus.BLOCKED) || card.getStatus().equals(CardStatus.LOST)) {
             throw new CardBlockedOrLostException("Cartão está bloqueado ou perdido.");
         }
 

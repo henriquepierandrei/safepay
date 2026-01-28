@@ -276,6 +276,7 @@ public class TransactionPipelineService {
                 ),
                 transaction.getMerchantCategory(),
                 transaction.getAmount(),
+                transaction.getReimbursement(),
                 transaction.getTransactionDateAndTime(),
                 transaction.getLatitude(),
                 transaction.getLongitude(),
