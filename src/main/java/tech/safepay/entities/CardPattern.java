@@ -10,86 +10,45 @@ import java.util.UUID;
 
 /**
  * Entidade que representa o padrão comportamental de um cartão.
- * <p>
  * Armazena métricas estatísticas e hábitos de uso utilizados
  * pelo motor antifraude para detecção de anomalias.
- *
- * Este modelo consolida histórico de transações e serve como
- * baseline para comparação em tempo de execução.
- *
- * Responsabilidades:
- * <ul>
- *   <li>Manter vínculo 1:1 com um cartão</li>
- *   <li>Registrar valores médios e máximos de transação</li>
- *   <li>Mapear categorias e localidades frequentes</li>
- *   <li>Armazenar padrões temporais de uso</li>
- * </ul>
- *
- * Não executa validações de fraude diretamente.
- * Atua como entidade de apoio ao pipeline antifraude.
- *
- * @author SafePay Team
- * @version 1.0
  */
 @Entity
 @Table(name = "cards_patterns_tb")
 public class CardPattern {
 
-    /**
-     * Identificador único do padrão comportamental.
-     */
     @Id
     @GeneratedValue
     private UUID patternId;
 
-    /**
-     * Cartão associado ao padrão.
-     * Relação um-para-um.
-     */
     @OneToOne
     @JoinColumn(name = "card_id")
     private Card card;
 
-    /**
-     * Valor médio das transações realizadas.
-     */
     private BigDecimal avgTransactionAmount;
-
-    /**
-     * Maior valor já registrado em uma transação.
-     */
     private BigDecimal maxTransactionAmount;
 
-    /**
-     * Categorias de comerciantes mais frequentes.
-     */
     @Enumerated(EnumType.STRING)
     private List<MerchantCategory> commonCategories;
 
-    /**
-     * Localizações mais recorrentes das transações.
-     */
     private List<String> commonLocations;
-
-    /**
-     * Frequência média de transações por dia.
-     */
     private Integer transactionFrequencyPerDay;
-
-    /**
-     * Horários preferenciais de uso do cartão.
-     */
     private List<LocalDateTime> preferredHours;
-
-    /**
-     * Data da última atualização do padrão.
-     */
     private LocalDateTime lastUpdated;
 
-    /** Construtor padrão exigido pelo JPA */
-    public CardPattern() {
-    }
+    // ===== NOVOS CAMPOS ESTATÍSTICOS =====
+    private BigDecimal medianAmount;          // Mediana
+    private BigDecimal stdDevAmount;          // Desvio padrão
+    private BigDecimal percentile95Amount;    // Percentil 95
+    private BigDecimal q1Amount;              // Primeiro quartil (25%)
+    private BigDecimal q3Amount;              // Terceiro quartil (75%)
+    private BigDecimal iqrAmount;             // Intervalo interquartil (q3 - q1)
 
+
+    /** Construtor padrão exigido pelo JPA */
+    public CardPattern() {}
+
+    // ===== GETTERS E SETTERS =====
 
     public UUID getPatternId() {
         return patternId;
@@ -123,28 +82,20 @@ public class CardPattern {
         this.maxTransactionAmount = maxTransactionAmount;
     }
 
-    public List<String> getCommonLocations() {
-        return commonLocations;
-    }
-
-    public void setCommonLocations(List<String> commonLocations) {
-        this.commonLocations = commonLocations;
-    }
-
-    public LocalDateTime getLastUpdated() {
-        return lastUpdated;
-    }
-
-    public void setLastUpdated(LocalDateTime lastUpdated) {
-        this.lastUpdated = lastUpdated;
-    }
-
     public List<MerchantCategory> getCommonCategories() {
         return commonCategories;
     }
 
     public void setCommonCategories(List<MerchantCategory> commonCategories) {
         this.commonCategories = commonCategories;
+    }
+
+    public List<String> getCommonLocations() {
+        return commonLocations;
+    }
+
+    public void setCommonLocations(List<String> commonLocations) {
+        this.commonLocations = commonLocations;
     }
 
     public Integer getTransactionFrequencyPerDay() {
@@ -162,4 +113,61 @@ public class CardPattern {
     public void setPreferredHours(List<LocalDateTime> preferredHours) {
         this.preferredHours = preferredHours;
     }
+
+    public LocalDateTime getLastUpdated() {
+        return lastUpdated;
+    }
+
+    public void setLastUpdated(LocalDateTime lastUpdated) {
+        this.lastUpdated = lastUpdated;
+    }
+
+    public BigDecimal getMedianAmount() {
+        return medianAmount;
+    }
+
+    public void setMedianAmount(BigDecimal medianAmount) {
+        this.medianAmount = medianAmount;
+    }
+
+    public BigDecimal getStdDevAmount() {
+        return stdDevAmount;
+    }
+
+    public void setStdDevAmount(BigDecimal stdDevAmount) {
+        this.stdDevAmount = stdDevAmount;
+    }
+
+    public BigDecimal getPercentile95Amount() {
+        return percentile95Amount;
+    }
+
+    public void setPercentile95Amount(BigDecimal percentile95Amount) {
+        this.percentile95Amount = percentile95Amount;
+    }
+
+    public BigDecimal getQ1Amount() {
+        return q1Amount;
+    }
+
+    public void setQ1Amount(BigDecimal q1Amount) {
+        this.q1Amount = q1Amount;
+    }
+
+    public BigDecimal getQ3Amount() {
+        return q3Amount;
+    }
+
+    public void setQ3Amount(BigDecimal q3Amount) {
+        this.q3Amount = q3Amount;
+    }
+
+    public BigDecimal getIqrAmount() {
+        return iqrAmount;
+    }
+
+    public void setIqrAmount(BigDecimal iqrAmount) {
+        this.iqrAmount = iqrAmount;
+    }
+
 }

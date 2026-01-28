@@ -3,6 +3,7 @@ package tech.safepay.entities;
 import jakarta.persistence.*;
 import tech.safepay.Enums.DeviceType;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -51,6 +52,7 @@ public class Device {
     @Column(length = 50)
     @Enumerated(EnumType.STRING)
     private DeviceType deviceType;
+    private LocalDateTime lastFingerPrintChangedAt;
 
     /**
      * Sistema operacional do dispositivo.
@@ -146,5 +148,13 @@ public class Device {
 
     public void setCards(List<Card> cards) {
         this.cards = cards;
+    }
+
+    public LocalDateTime getLastFingerPrintChangedAt() {
+        return lastFingerPrintChangedAt;
+    }
+
+    public void setLastFingerPrintChangedAt(LocalDateTime lastFingerPrintChangedAt) {
+        this.lastFingerPrintChangedAt = lastFingerPrintChangedAt;
     }
 }
