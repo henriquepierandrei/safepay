@@ -5,6 +5,8 @@ import org.springframework.web.bind.annotation.*;
 import tech.safepay.dtos.fraudalert.FraudAlertFilterRequestDTO;
 import tech.safepay.services.FraudAlertService;
 
+import java.util.UUID;
+
 /**
  * Controller responsável pelo gerenciamento de alertas de fraude no sistema SafePay.
  * <p>
@@ -114,4 +116,33 @@ public class FraudAlertController {
                 fraudAlertService.getAllWithoutFilters(page, size)
         );
     }
+
+    /**
+     * Classifica o status do alerta de maneira manual
+     * <p>
+     * Endpoint voltado para classificar o status do alerta baseado na análise humana
+     * </p>
+     *
+     * Exemplo:
+     * {@code GET /api/v1/fraud-alerts/status?status=2}
+     *
+     * @param numberStatus número referente ao status:
+     * <ul>
+     *     <li><code>0</code> - PENDING</li>
+     *     <li><code>1</code> - CONFIRMED</li>
+     *     <li><code>2</code> - FALSE_POSITIVE</li>
+     * </ul>
+     *  -1 < <code>numberStaus</code>  =< 2
+     * @return Response de feedback
+     */
+    @PostMapping("/status")
+    public ResponseEntity<?> classifyStatus(
+            @RequestParam(name = "status") int numberStatus,
+            @RequestParam(name = "transactionId") UUID transactionId
+    ) {
+        return ResponseEntity.ok(
+                fraudAlertService.classifyStatus(numberStatus, transactionId)
+        );
+    }
+
 }

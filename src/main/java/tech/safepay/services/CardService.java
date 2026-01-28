@@ -9,11 +9,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import tech.safepay.Enums.CardBrand;
 import tech.safepay.Enums.CardStatus;
-import tech.safepay.dtos.cards.CardDataResponseDto;
-import tech.safepay.dtos.cards.CardResponse;
-import tech.safepay.dtos.cards.CardsInDeviceResponseDto;
-import tech.safepay.dtos.cards.CardsResponse;
+import tech.safepay.dtos.cards.*;
 import tech.safepay.entities.Card;
+import tech.safepay.exceptions.card.CardBlockedOrLostException;
 import tech.safepay.exceptions.card.CardNotFoundException;
 import tech.safepay.exceptions.card.CardQuantityMaxException;
 import tech.safepay.exceptions.device.DeviceNotFoundException;
@@ -334,6 +332,54 @@ public class CardService {
                 .findWithFilters(cardBrand, recentlyCreated, limitDate, pageable)
                 .map(CardsResponse::fromEntity);
     }
+
+
+
+
+    /**
+     * Atualiza o estado de um cartão (bloqueado ou perdido) se estiver vinculado ao deviceId informado.
+     *
+     * <p>O cartão só será atualizado se existir e se o {@code deviceId} fornecido
+     * corresponder ao dispositivo registrado no cartão.</p>
+     *
+     * @param cardId UUID do cartão a ser atualizado
+     * @param deviceId UUID do dispositivo vinculado ao cartão
+     * @param block Se true, marca como bloqueado; se false, marca como perdido
+     * @return {@link CardBlockResponseDto} com o resultado da operação
+     * @throws CardBlockedOrLostException se o cartão já estiver bloqueado ou perdido
+     * @throws CardNotFoundException se o cartão não existir ou não estiver vinculado ao device informado
+     */
+    public CardBlockResponseDto updateCardStatus(UUID cardId, UUID deviceId, boolean block) {
+        var cardOptional = cardRepository.findByIdAndDeviceId(cardId, deviceId);
+
+        if (cardOptional.isEmpty()) {
+            throw new CardNotFoundException("Cartão não encontrado ou não vinculado a este dispositivo.");
+        }
+
+        var card = cardOptional.get();
+
+        if (card.getCardIsBlock() || card.getCardIsLost()) {
+            throw new CardBlockedOrLostException("Cartão já está bloqueado ou perdido.");
+        }
+
+        if (block) {
+            card.setCardIsBlock(true);
+        } else {
+            card.setCardIsLost(true);
+        }
+
+        cardRepository.saveAndFlush(card);
+
+        String message = block ? "Cartão bloqueado com sucesso" : "Cartão marcado como perdido com sucesso";
+
+        return new CardBlockResponseDto(
+                card.getCardId(),
+                deviceId,
+                true,
+                message
+        );
+    }
+
 
 
 }

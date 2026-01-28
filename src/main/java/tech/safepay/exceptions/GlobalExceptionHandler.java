@@ -4,6 +4,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import tech.safepay.exceptions.alerts.AlertNotFoundException;
+import tech.safepay.exceptions.alerts.AlertStatusNotFoundException;
 import tech.safepay.exceptions.card.CardNotFoundException;
 import tech.safepay.exceptions.card.CardQuantityMaxException;
 import tech.safepay.exceptions.device.DeviceMaxSupportedException;
@@ -97,6 +99,22 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(TransactionNotFoundException.class)
     public ResponseEntity<Map<String, Object>> handleTransactionNotFound(TransactionNotFoundException ex) {
+        return buildResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
+    }
+
+    /**
+     * Alert Status não encontrado.
+     */
+    @ExceptionHandler(AlertStatusNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleAlertStatusNotFoundException(AlertStatusNotFoundException ex) {
+        return buildResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
+    }
+
+    /**
+     * Alert não encontrado.
+     */
+    @ExceptionHandler(AlertNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleAlertNotFoundException(AlertNotFoundException ex) {
         return buildResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
     }
 

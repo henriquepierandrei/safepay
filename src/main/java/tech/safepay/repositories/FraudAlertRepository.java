@@ -3,7 +3,9 @@ package tech.safepay.repositories;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import tech.safepay.entities.FraudAlert;
+import tech.safepay.entities.Transaction;
 
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -22,4 +24,5 @@ import java.util.UUID;
  */
 public interface FraudAlertRepository extends JpaRepository<FraudAlert, UUID>,
         JpaSpecificationExecutor<FraudAlert> {
+    Optional<FraudAlert> findByTransaction(Transaction transaction);
 }

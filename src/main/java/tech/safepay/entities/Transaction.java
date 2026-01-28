@@ -124,6 +124,11 @@ public class Transaction {
     private Boolean isFraud;
 
     /**
+     * Indica se a transação foi reembolsada.
+     */
+    private Boolean isReimbursement;
+
+    /**
      * Data de criação do registro.
      */
     private LocalDateTime createdAt;
@@ -259,5 +264,13 @@ public class Transaction {
 
     public void setDeviceFingerprint(String deviceFingerprint) {
         this.deviceFingerprint = deviceFingerprint;
+    }
+
+    public Boolean getReimbursement() {
+        return isReimbursement;
+    }
+
+    public void setReimbursement(Boolean reimbursement) {
+        isReimbursement = reimbursement;
     }
 }

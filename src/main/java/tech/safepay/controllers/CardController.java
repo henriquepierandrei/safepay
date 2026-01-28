@@ -3,6 +3,7 @@ package tech.safepay.controllers;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import tech.safepay.Enums.CardBrand;
+import tech.safepay.dtos.cards.CardBlockResponseDto;
 import tech.safepay.services.CardService;
 
 import java.util.UUID;
@@ -111,4 +112,37 @@ public class CardController {
                 cardService.getWithFilters(cardBrand, recentlyCreated, page, size)
         );
     }
+
+    /**
+     * Endpoint para bloquear ou marcar um cartão como perdido com base no ID do cartão e do dispositivo.
+     *
+     * <p>O cartão só será atualizado se o {@code deviceId} corresponder ao dispositivo vinculado
+     * ao cartão e o {@code cardId} corresponder ao cartão informado. Dependendo do endpoint:
+     * </p>
+     * <ul>
+     *     <li><b>/block</b> - Marca o cartão como bloqueado.</li>
+     *     <li><b>/lost</b> - Marca o cartão como perdido.</li>
+     * </ul>
+     *
+     * <p>Essa operação previne o uso indevido de cartões, garantindo que apenas combinações
+     * válidas de dispositivo e cartão possam ser alteradas.</p>
+     *
+     * @param cardId UUID do cartão a ser atualizado
+     * @param deviceId UUID do dispositivo vinculado ao cartão
+     * @return {@link CardBlockResponseDto} contendo o resultado da operação
+     */
+
+    @PostMapping("/block")
+    public ResponseEntity<CardBlockResponseDto> blockCard(@RequestParam UUID cardId, @RequestParam UUID deviceId) {
+        return ResponseEntity.ok(cardService.updateCardStatus(cardId, deviceId, true));
+    }
+    @PostMapping("/lost")
+    public ResponseEntity<CardBlockResponseDto> markCardAsLost(@RequestParam UUID cardId, @RequestParam UUID deviceId) {
+        return ResponseEntity.ok(cardService.updateCardStatus(cardId, deviceId, false));
+    }
+
+
+
 }
+
+

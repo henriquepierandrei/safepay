@@ -6,13 +6,21 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import tech.safepay.Enums.AlertStatus;
 import tech.safepay.Enums.AlertType;
 import tech.safepay.Enums.Severity;
+import tech.safepay.Enums.TransactionDecision;
+import tech.safepay.dtos.fraudalert.FraudStatusResponseDto;
+import tech.safepay.exceptions.alerts.AlertNotFoundException;
+import tech.safepay.exceptions.alerts.AlertStatusNotFoundException;
+import tech.safepay.repositories.CardRepository;
+import tech.safepay.repositories.TransactionRepository;
 import tech.safepay.specifications.FraudAlertSpecifications;
 import tech.safepay.dtos.fraudalert.FraudAlertResponseDTO;
 import tech.safepay.entities.FraudAlert;
 import tech.safepay.repositories.FraudAlertRepository;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -49,14 +57,13 @@ import java.util.UUID;
 public class FraudAlertService {
 
     private final FraudAlertRepository fraudAlertRepository;
+    private final CardRepository cardRepository;
+    private final TransactionRepository transactionRepository;
 
-    /**
-     * Construtor do serviço com injeção de dependências.
-     *
-     * @param fraudAlertRepository repositório para acesso aos alertas de fraude
-     */
-    public FraudAlertService(FraudAlertRepository fraudAlertRepository) {
+    public FraudAlertService(FraudAlertRepository fraudAlertRepository, CardRepository cardRepository, TransactionRepository transactionRepository) {
         this.fraudAlertRepository = fraudAlertRepository;
+        this.cardRepository = cardRepository;
+        this.transactionRepository = transactionRepository;
     }
 
     /**
@@ -213,4 +220,82 @@ public class FraudAlertService {
 
         return fraudAlerts.map(FraudAlertResponseDTO::from);
     }
+
+
+
+    /**
+     * Classifica o status de uma transação manualmente, mesmo que não exista alerta associado.
+     *
+     * <p>Este método permite atualizar a transação e seu alerta (se existir) com base no status informado.
+     * Útil para casos em que o alerta ainda não foi gerado, mas é necessário processar a transação.</p>
+     *
+     * <ul>
+     *     <li>{@code 0} - PENDING: alerta pendente</li>
+     *     <li>{@code 1} - CONFIRMED: alerta confirmado</li>
+     *     <li>{@code 2} - FALSE_POSITIVE: falso positivo</li>
+     * </ul>
+     *
+     * <p>Se a transação for classificada como {@code CONFIRMED}, o reembolso será aplicado
+     * e o limite do cartão atualizado mesmo sem alerta.</p>
+     *
+     * @param numberStatus Número representando o status (0, 1 ou 2)
+     * @param transactionId UUID da transação a ser processada
+     * @return {@link FraudStatusResponseDto} DTO contendo informações atualizadas da transação e alerta (se existir)
+     * @throws AlertStatusNotFoundException Se o número do status estiver fora do intervalo válido
+     * @throws AlertNotFoundException Se a transação não existir
+     */
+    public FraudStatusResponseDto classifyStatus(int numberStatus, UUID transactionId) {
+        if (numberStatus < 0 || numberStatus > 2) {
+            throw new AlertStatusNotFoundException("Status inválido.");
+        }
+
+
+        // Busca a transação diretamente
+        var transaction = transactionRepository.findById(transactionId)
+                .orElseThrow(() -> new AlertNotFoundException("Transação não encontrada."));
+
+        // Busca alerta associado, mas não impede o processamento se não existir
+        var alertOptional = fraudAlertRepository.findByTransaction(transaction);
+
+        // Define o status
+        AlertStatus alertStatus = switch (numberStatus) {
+            case 0 -> AlertStatus.PENDING;
+            case 1 -> AlertStatus.CONFIRMED;
+            case 2 -> AlertStatus.FALSE_POSITIVE;
+            default -> throw new AlertStatusNotFoundException("Status inválido.");
+        };
+
+        // Atualiza o alerta se existir
+        alertOptional.ifPresent(alert -> alert.setStatus(alertStatus));
+
+        if (transaction.getReimbursement()){
+            throw new RuntimeException("Transação já revisada e reembolsada!");
+        }
+
+        // Se confirmado, aplica reembolso e atualiza limite do cartão
+        if (alertStatus.equals(AlertStatus.CONFIRMED)) {
+            var card = transaction.getCard();
+            if (card != null) {
+                transaction.setReimbursement(true);
+                transaction.setFraud(true);
+                transaction.setTransactionDecision(TransactionDecision.BLOCKED);
+                card.setRemainingLimit(card.getRemainingLimit().add(transaction.getAmount()));
+                cardRepository.saveAndFlush(card);
+            }
+        }
+
+        transactionRepository.save(transaction);
+        alertOptional.ifPresent(fraudAlertRepository::save);
+
+        return new FraudStatusResponseDto(
+                alertOptional.map(a -> a.getAlertId()).orElse(null),
+                alertOptional.map(a -> a.getStatus()).orElse(null),
+                transaction.getAmount(),
+                transaction.getReimbursement()
+        );
+    }
+
+
+
+
 }

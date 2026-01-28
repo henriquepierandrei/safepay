@@ -7,6 +7,10 @@ import tech.safepay.dtos.transaction.ManualTransactionDto;
 import tech.safepay.dtos.transaction.ResolvedLocalizationDto;
 import tech.safepay.entities.Card;
 import tech.safepay.entities.Transaction;
+import tech.safepay.exceptions.card.CardBlockedOrLostException;
+import tech.safepay.exceptions.card.CardNotFoundException;
+import tech.safepay.exceptions.device.DeviceNotFoundException;
+import tech.safepay.exceptions.device.DeviceNotLinkedException;
 import tech.safepay.repositories.CardRepository;
 import tech.safepay.repositories.DeviceRepository;
 import tech.safepay.repositories.TransactionRepository;
@@ -218,6 +222,11 @@ public class TransactionGenerator {
     public Transaction generateNormalTransaction() {
 
         Card card = sortCard();
+
+        if (card.getCardIsBlock() || card.getCardIsBlock()) {
+            throw new CardBlockedOrLostException("Cartão já está bloqueado ou perdido.");
+        }
+
         Transaction transaction = new Transaction();
 
         transaction.setCard(card);
@@ -233,6 +242,7 @@ public class TransactionGenerator {
         );
 
         transaction.setTransactionDateAndTime(LocalDateTime.now());
+        transaction.setReimbursement(false);
         transaction.setCreatedAt(LocalDateTime.now());
 
         // IP
@@ -433,19 +443,23 @@ public class TransactionGenerator {
         // Recupera o cartão informado
         Card card = cardRepository.findById(manualTransactionDto.cardId())
                 .orElseThrow(() ->
-                        new IllegalArgumentException("Card not found")
+                        new CardNotFoundException("Cartão encontrado!")
                 );
+
+        if (card.getCardIsBlock() || card.getCardIsBlock()) {
+            throw new CardBlockedOrLostException("Cartão já está bloqueado ou perdido.");
+        }
 
         // Recupera o device informado
         var device = deviceRepository.findById(manualTransactionDto.deviceId())
                 .orElseThrow(() ->
-                        new IllegalArgumentException("Device not found")
+                        new DeviceNotFoundException("Dispositivo não encontrado.")
                 );
 
         // Garante que o device pertence ao cartão informado
         if (card.getDevices() == null || !card.getDevices().contains(device)) {
-            throw new IllegalStateException(
-                    "Device does not belong to the card"
+            throw new DeviceNotLinkedException(
+                    "Dispositivo não possui esse cartão"
             );
         }
 
@@ -469,7 +483,7 @@ public class TransactionGenerator {
 
         transaction.setTransactionDateAndTime(LocalDateTime.now());
         transaction.setCreatedAt(LocalDateTime.now());
-
+        transaction.setReimbursement(false);
 
         // Estado inicial da transação
         transaction.setTransactionDecision(TransactionDecision.REVIEW);

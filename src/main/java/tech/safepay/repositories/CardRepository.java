@@ -11,6 +11,7 @@ import tech.safepay.entities.Card;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -71,5 +72,10 @@ public interface CardRepository extends JpaRepository<Card, UUID> {
             @Param("limitDate") LocalDateTime limitDate,
             Pageable pageable
     );
+
+
+
+    Optional<Card> findByIdAndDeviceId(UUID id, UUID deviceId);
+
 
 }
