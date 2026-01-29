@@ -21,7 +21,7 @@ import java.util.UUID;
  * @version 1.0
  */
 @RestController
-@RequestMapping("/api/v1/card")
+@RequestMapping("/api/v1")
 public class CardController {
 
     /**
@@ -50,7 +50,7 @@ public class CardController {
      * @param quantity quantidade de cartões a serem gerados
      * @return resposta contendo a lista de cartões gerados
      */
-    @PostMapping("/generate")
+    @PostMapping("/admin/card/generate")
     public ResponseEntity<?> generateCards(
             @RequestParam(name = "quantity") int quantity
     ) {
@@ -66,7 +66,7 @@ public class CardController {
      * @param id identificador único (UUID) do cartão
      * @return resposta confirmando a exclusão do cartão
      */
-    @DeleteMapping("/delete")
+    @DeleteMapping("/admin/card/delete")
     public ResponseEntity<?> deleteCard(
             @RequestParam(name = "id") UUID id
     ) {
@@ -84,7 +84,7 @@ public class CardController {
      *
      * @return resposta confirmando o reset dos créditos
      */
-    @PutMapping("/remaining-credits/reset")
+    @PutMapping("/admin/card/remaining-credits/reset")
     public ResponseEntity<?> resetRemainingCredits() {
         return ResponseEntity.ok(cardService.resetRemainingCreditAllCards());
     }

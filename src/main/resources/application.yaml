@@ -20,6 +20,11 @@ spring:
 server:
   port: 8080
 
+jwt:
+  secret: 32fbdf18166f9fb5521d9d1912d27de672ebb26eacb57a5de9001f3a96db24dc
+  access-token-expiration: 900000        # 15 minutos
+  refresh-token-expiration: 604800000    # 7 dias
+
 logging:
   level:
     root: INFO

@@ -4,6 +4,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import tech.safepay.auth.UnauthorizedException;
 import tech.safepay.exceptions.alerts.AlertNotFoundException;
 import tech.safepay.exceptions.alerts.AlertStatusNotFoundException;
 import tech.safepay.exceptions.card.CardNotFoundException;
@@ -116,6 +117,14 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AlertNotFoundException.class)
     public ResponseEntity<Map<String, Object>> handleAlertNotFoundException(AlertNotFoundException ex) {
         return buildResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
+    }
+
+    /**
+     * Não Autorizado
+     */
+    @ExceptionHandler(UnauthorizedException.class)
+    public ResponseEntity<Map<String, Object>> handleUnauthorizedException(UnauthorizedException ex) {
+        return buildResponse(ex.getMessage(), HttpStatus.UNAUTHORIZED);
     }
 
     /**

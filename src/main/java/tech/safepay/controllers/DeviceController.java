@@ -24,7 +24,7 @@ import java.util.UUID;
  * @version 1.0
  */
 @RestController
-@RequestMapping("/api/v1/device")
+@RequestMapping("/api/v1")
 public class DeviceController {
 
     /**
@@ -61,7 +61,7 @@ public class DeviceController {
      * @param quantity quantidade de dispositivos a serem gerados
      * @return resposta contendo a lista de dispositivos gerados
      */
-    @PostMapping("/generate")
+    @PostMapping("/admin/device/generate")
     public ResponseEntity<?> generateDevices(
             @RequestParam(name = "quantity") int quantity
     ) {
@@ -82,7 +82,7 @@ public class DeviceController {
      * @param size quantidade de registros por página
      * @return página de dispositivos conforme filtros aplicados
      */
-    @GetMapping("/list")
+    @GetMapping("/device/list")
     public ResponseEntity<Page<DeviceListResponseDto.DeviceDto>> getDeviceList(
             @RequestParam(required = false) DeviceType deviceType,
             @RequestParam(required = false) String os,
@@ -130,7 +130,7 @@ public class DeviceController {
      *
      * @return resposta contendo o resultado da operação
      */
-    @PostMapping("/cards/add/automatic")
+    @PostMapping("/admin/device/cards/add/automatic")
     public ResponseEntity<?> addCardAutomatic() {
         return ResponseEntity.ok(deviceService.addCardToDeviceAutomatic());
     }
