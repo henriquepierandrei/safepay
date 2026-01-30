@@ -31,7 +31,7 @@ public class TransactionExecutionControl {
      * <p>Valor {@code true} indica que o processamento está suspenso;
      * valor {@code false} indica que o processamento está ativo.</p>
      */
-    private final AtomicBoolean paused = new AtomicBoolean(false);
+    private final AtomicBoolean paused = new AtomicBoolean(true);
 
     /**
      * Retorna o estado atual do processamento de transações.

@@ -244,6 +244,8 @@ public class TransactionGenerator {
 
         transaction.setTransactionDateAndTime(LocalDateTime.now());
         transaction.setReimbursement(false);
+
+
         transaction.setCreatedAt(LocalDateTime.now());
 
         // IP

@@ -2,7 +2,10 @@ package tech.safepay.websocket;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Bean;
+import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.stereotype.Service;
 import tech.safepay.dtos.transaction.TransactionResponseDto;
 import tech.safepay.services.TransactionPipelineService;
@@ -94,4 +97,13 @@ public class TransactionScheduler {
             publisher.publish(result);
         });
     }
+
+    @Bean
+    public TaskScheduler taskScheduler() {
+        ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
+        scheduler.setPoolSize(5); // quantidade de execuções paralelas
+        scheduler.setThreadNamePrefix("transaction-scheduler-");
+        return scheduler;
+    }
+
 }

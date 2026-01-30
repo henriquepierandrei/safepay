@@ -48,7 +48,7 @@ public class DeviceService {
      * Número máximo de dispositivos que podem ser registrados simultaneamente no sistema.
      * Esta limitação previne sobrecarga e garante rastreabilidade adequada.
      */
-    private static final int MAX_DEVICE_SUPPORTED = 20;
+    private static final int MAX_DEVICE_SUPPORTED = 10000;
 
     /**
      * Gerador de números aleatórios thread-safe utilizado para seleção de configurações de dispositivos.
@@ -137,17 +137,23 @@ public class DeviceService {
      * @throws IllegalStateException se não houver cartões suficientes para associação
      */
     public DeviceResponse generateDevice(int quantity) {
-        long atualQuantity = deviceRepository.count();
+        long currentQuantity = deviceRepository.count();
 
-        if (atualQuantity + quantity > MAX_DEVICE_SUPPORTED) {
+        // Quantos dispositivos ainda podem ser criados
+        long allowedQuantity = MAX_DEVICE_SUPPORTED - currentQuantity;
+
+        if (allowedQuantity <= 0) {
             throw new DeviceMaxSupportedException(
-                    "Você pode registrar somente " + (MAX_DEVICE_SUPPORTED - atualQuantity) + " dispositivos!"
+                    "Limite máximo de dispositivos atingido!"
             );
         }
 
-        List<Device> devicesToSave = new ArrayList<>();
+        // Se a quantidade pedida ultrapassa o limite, ajusta
+        int finalQuantity = (int) Math.min(quantity, allowedQuantity);
 
-        for (int i = 0; i < quantity; i++) {
+        List<Device> devicesToSave = new ArrayList<>(finalQuantity);
+
+        for (int i = 0; i < finalQuantity; i++) {
             Device device = new Device();
 
             // UUID único para referenciar fingerprint
@@ -173,12 +179,13 @@ public class DeviceService {
             devicesToSave.add(device);
         }
 
-        // Salva tudo de uma vez
+        // Salva tudo de uma vez (mais performático que flush a cada iteração)
         deviceRepository.saveAll(devicesToSave);
         deviceRepository.flush();
 
-        return new DeviceResponse("Registro bem sucedido", HttpStatus.OK);
+        return new DeviceResponse(finalQuantity + " dispositivo(s) registrados com sucesso", HttpStatus.OK);
     }
+
 
     /**
      * Seleciona aleatoriamente um sistema operacional compatível com o tipo de dispositivo.
@@ -284,21 +291,28 @@ public class DeviceService {
      * @return DeviceResponse com mensagem informando o resultado da operação
      * @throws IllegalStateException se não houver cartões suficientes no sistema
      */
-    public DeviceResponse addCardToDeviceAutomatic() {
-        // Pega todos os dispositivos
-        List<Device> devices = deviceRepository.findAll();
+    private List<Card> sortCardsForDevice(int minCards, int maxCards) {
+        List<Card> allCards = new ArrayList<>(cardRepository.findAll());
+        if (allCards.isEmpty()) {
+            throw new IllegalStateException("Não há cartões disponíveis para distribuir");
+        }
 
-        // Se não tiver dispositivos, não faz sentido
+        Collections.shuffle(allCards);
+        int count = RANDOM.nextInt(maxCards - minCards + 1) + minCards; // min a max
+        count = Math.min(count, allCards.size()); // não ultrapassa o total de cartões
+
+        return allCards.subList(0, count);
+    }
+
+    public DeviceResponse addCardToDeviceAutomatic() {
+        List<Device> devices = deviceRepository.findAll();
         if (devices.isEmpty()) {
             return new DeviceResponse("Nenhum dispositivo disponível para adicionar cartões", HttpStatus.BAD_REQUEST);
         }
 
-        // Pega dois cartões aleatórios
-        List<Card> cards = sortCardToDevice();
-
-        // Distribui os cartões nos dispositivos
         for (Device device : devices) {
-            for (Card card : cards) {
+            List<Card> cardsForDevice = sortCardsForDevice(1, 4);
+            for (Card card : cardsForDevice) {
                 if (!device.getCards().contains(card)) {
                     device.getCards().add(card);
                 }
@@ -308,11 +322,10 @@ public class DeviceService {
             }
         }
 
-        // Salva todos os dispositivos (JPA cuida do relacionamento)
         deviceRepository.saveAll(devices);
         deviceRepository.flush();
 
-        return new DeviceResponse("Cartões adicionados automaticamente aos dispositivos", HttpStatus.OK);
+        return new DeviceResponse("Cartões distribuídos aleatoriamente aos dispositivos", HttpStatus.OK);
     }
 
     /**

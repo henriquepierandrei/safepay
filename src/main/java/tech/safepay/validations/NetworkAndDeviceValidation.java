@@ -43,7 +43,7 @@ public class NetworkAndDeviceValidation {
     /**
      * Threshold mínimo de cartões diferentes no mesmo dispositivo para sinalizar comportamento suspeito.
      */
-    private static final int MULTIPLE_CARDS_THRESHOLD = 3;
+    private static final int MULTIPLE_CARDS_THRESHOLD = 4;
 
     /**
      * Mapper para processamento de arquivos JSON.

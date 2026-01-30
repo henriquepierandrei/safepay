@@ -51,7 +51,7 @@ public class CardService {
      * Limite máximo de cartões que podem existir no sistema simultaneamente.
      * Esta restrição previne sobrecarga do banco de dados e garante performance adequada.
      */
-    private static final Integer QUANTITY_LIMIT = 500;
+    private static final Integer QUANTITY_LIMIT = 100000;
 
     /**
      * Gerador de números aleatórios thread-safe utilizado em operações que requerem aleatoriedade.
@@ -100,17 +100,21 @@ public class CardService {
      * @return CardResponse com status HTTP CREATED e mensagem de confirmação
      * @throws CardQuantityMaxException se o limite máximo de cartões no sistema for atingido
      */
-    public CardResponse cardRegister(Integer quantity){
+    public CardResponse cardRegister(Integer quantity) {
 
-        if (cardRepository.findAll().size() >= 500){
-            throw new CardQuantityMaxException("Número máximo de criações alcançados!");
+        long currentSize = cardRepository.count();
+
+        // Calcula quantos cartões podem ser criados sem ultrapassar o limite
+        int finalValue = (int) Math.min(quantity, QUANTITY_LIMIT - currentSize);
+
+        if (finalValue <= 0) {
+            throw new CardQuantityMaxException("Número máximo de criações alcançado!");
         }
 
-        for (int i = 0; i < quantity; i++) {
+        for (int i = 0; i < finalValue; i++) {
             Card card = new Card();
 
             var cardBrand = defaultCardGenerator.choiceCardBrand();
-
 
             card.setCardBrand(cardBrand);
             card.setCardNumber(defaultCardGenerator.generateNumber(cardBrand));
@@ -122,19 +126,17 @@ public class CardService {
             card.setCreditLimit(credit);
             card.setRemainingLimit(credit);
 
-
             card.setStatus(CardStatus.ACTIVE);
             card.setCardHolderName(defaultCardGenerator.generateName());
-            cardRepository.saveAndFlush(card);
 
+            cardRepository.saveAndFlush(card);
         }
 
         return new CardResponse(
                 HttpStatus.CREATED,
-                "Cartões criados"
+                finalValue + " cartão(ões) criados com sucesso!"
         );
     }
-
 
     /**
      * Remove permanentemente um cartão do sistema.
